@@ -4,7 +4,7 @@
 OBJS="asm/boot.o init.o mem.o fs.o print.o asm/int_table.o int.o io.o pic.o pit.o asm/cxt_switch.o thread.o scheduler.o test_funcs.o heap.o ide.o gdt.o asm/lgdt.o"
 
 # Output directory (optional)
-OUTDIR="./out"
+OUTDIR="./dissasm"
 mkdir -p "$OUTDIR"
 
 # Function to disassemble all object files
