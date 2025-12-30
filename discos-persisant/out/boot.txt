@@ -1,0 +1,29 @@
+
+asm/boot.o:     file format elf32-i386
+
+Contents of section .text:
+ 0000 eb0e6690 02b0ad1b 03000000 fb4f52e4  ..f..........OR.
+ 0010 bc001000 005350e8 fcffffff faf4ebfe  .....SP.........
+
+Disassembly of section .text:
+
+00000000 <_start>:
+   0:	eb 0e                	jmp    10 <real_start>
+   2:	66 90                	xchg   %ax,%ax
+   4:	02 b0 ad 1b 03 00    	add    0x31bad(%eax),%dh
+   a:	00 00                	add    %al,(%eax)
+   c:	fb                   	sti
+   d:	4f                   	dec    %edi
+   e:	52                   	push   %edx
+   f:	e4                   	.byte 0xe4
+
+00000010 <real_start>:
+  10:	bc 00 10 00 00       	mov    $0x1000,%esp
+  15:	53                   	push   %ebx
+  16:	50                   	push   %eax
+  17:	e8 fc ff ff ff       	call   18 <real_start+0x8>
+  1c:	fa                   	cli
+  1d:	f4                   	hlt
+
+0000001e <loop>:
+  1e:	eb fe                	jmp    1e <loop>

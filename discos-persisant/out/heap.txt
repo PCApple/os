@@ -1,0 +1,570 @@
+
+heap.o:     file format elf32-i386
+
+Contents of section .group:
+ 0000 01000000 06000000                    ........        
+Contents of section .text:
+ 0000 5589e583 ec18e8fc ffffff05 01000000  U...............
+ 0010 837d0800 7507b8ff ffffffeb 6a83ec0c  .}..u.......j...
+ 0020 ff7508e8 fcffffff 83c41089 45ec837d  .u..........E..}
+ 0030 ec017f07 b8000000 00eb4cc7 45f40000  ..........L.E...
+ 0040 00008b45 ec89c2c1 ea1f01d0 d1f883e8  ...E............
+ 0050 018945f0 eb2883ec 04ff75ec ff75f0ff  ..E..(....u..u..
+ 0060 7508e8fc ffffff83 c4100145 f4837df4  u..........E..}.
+ 0070 007907b8 ffffffff eb0d836d f001837d  .y.........m...}
+ 0080 f00079d2 8b45f4c9 c35589e5 83ec20e8  ..y..E...U.... .
+ 0090 fcffffff 05010000 008b450c 8945fc8b  ..........E..E..
+ 00a0 450c01c0 83c00189 45f88b45 0c83c001  E.......E..E....
+ 00b0 01c08945 f48b45f8 3b45107d 2e8b45f8  ...E..E.;E.}..E.
+ 00c0 8d14c500 0000008b 450801d0 8b50048b  ........E....P..
+ 00d0 45fc8d0c c5000000 008b4508 01c88b40  E.........E....@
+ 00e0 0439c273 068b45f8 8945fc8b 45f43b45  .9.s..E..E..E.;E
+ 00f0 107d2e8b 45f48d14 c5000000 008b4508  .}..E.........E.
+ 0100 01d08b50 048b45fc 8d0cc500 0000008b  ...P..E.........
+ 0110 450801c8 8b400439 c273068b 45f48945  E....@.9.s..E..E
+ 0120 fc8b45fc 3b450c0f 84980000 008b450c  ..E.;E........E.
+ 0130 8d14c500 0000008b 450801d0 8b400489  ........E....@..
+ 0140 45f08b45 0c8d14c5 00000000 8b450801  E..E.........E..
+ 0150 d08b0089 45ec8b45 fc8d14c5 00000000  ....E..E........
+ 0160 8b450801 d08b550c 8d0cd500 0000008b  .E....U.........
+ 0170 550801ca 8b400489 42048b45 fc8d14c5  U....@..B..E....
+ 0180 00000000 8b450801 d08b550c 8d0cd500  .....E....U.....
+ 0190 0000008b 550801ca 8b008902 8b45fc8d  ....U........E..
+ 01a0 14c50000 00008b45 0801c28b 45f08942  .......E....E..B
+ 01b0 048b45fc 8d14c500 0000008b 450801c2  ..E.........E...
+ 01c0 8b45ec89 02b80000 0000c9c3 5589e583  .E..........U...
+ 01d0 ec18e8fc ffffff05 01000000 83ec0cff  ................
+ 01e0 7508e8fc ffffff83 c4108945 f4837df4  u..........E..}.
+ 01f0 ff740981 7df4ff03 00007e07 b8ffffff  .t..}.....~.....
+ 0200 ffeb3c8b 45f48d14 c5000000 008b4508  ..<.E.........E.
+ 0210 01c28b45 0c89028b 45f48d14 c5000000  ...E....E.......
+ 0220 008b4508 01c28b45 10894204 83ec0cff  ..E....E..B.....
+ 0230 7508e8fc ffffff83 c410b800 000000c9  u...............
+ 0240 c35589e5 83ec18e8 fcffffff 05010000  .U..............
+ 0250 0083ec0c ff7508e8 fcffffff 83c41089  .....u..........
+ 0260 45ec837d ecff7406 837dec00 750ab8ff  E..}..t..}..u...
+ 0270 ffffffe9 02010000 c745f4ff ffffffc7  .........E......
+ 0280 45f00000 0000eb42 8b45f08d 14c50000  E......B.E......
+ 0290 00008b45 0801d08b 108b450c 8b0039c2  ...E......E...9.
+ 02a0 75248b45 f08d14c5 00000000 8b450801  u$.E.........E..
+ 02b0 d08b5004 8b450c8b 400439c2 75088b45  ..P..E..@.9.u..E
+ 02c0 f08945f4 eb0c8345 f0018b45 f03b45ec  ..E....E...E.;E.
+ 02d0 7cb6837d f4ff750a b8ffffff ffe99800  |..}..u.........
+ 02e0 00008b45 ec05ffff ff1f8d14 c5000000  ...E............
+ 02f0 008b4508 01d08b55 f48d0cd5 00000000  ..E....U........
+ 0300 8b550801 ca8b0089 028b45ec 05ffffff  .U........E.....
+ 0310 1f8d14c5 00000000 8b450801 d08b55f4  .........E....U.
+ 0320 8d0cd500 0000008b 550801ca 8b400489  ........U....@..
+ 0330 42048b45 ec05ffff ff1f8d14 c5000000  B..E............
+ 0340 008b4508 01d0c700 00000000 8b45ec05  ..E..........E..
+ 0350 ffffff1f 8d14c500 0000008b 450801d0  ............E...
+ 0360 c7400400 00000083 ec0cff75 08e8fcff  .@.........u....
+ 0370 ffff83c4 10b80000 0000c9c3 5589e583  ............U...
+ 0380 ec10e8fc ffffff05 01000000 837d0800  .............}..
+ 0390 7507b8ff ffffffeb 35c745fc 00000000  u.......5.E.....
+ 03a0 eb1e8b45 fc8d14c5 00000000 8b450801  ...E.........E..
+ 03b0 d08b0085 c075058b 45fceb12 8345fc01  .....u..E....E..
+ 03c0 817dfcff 0300007e d9b80000 0000c9c3  .}.....~........
+Contents of section .text.__x86.get_pc_thunk.ax:
+ 0000 8b0424c3                             ..$.            
+Contents of section .debug_info:
+ 0000 8b030000 05000104 00000000 0e880000  ................
+ 0010 000c0000 00000700 00000000 0000d003  ................
+ 0020 00000000 00000201 08490000 00020207  .........I......
+ 0030 75000000 069f0100 00020a1b 40000000  u...........@...
+ 0040 02040763 00000002 0807d801 00000201  ...c............
+ 0050 066b0200 00020205 32020000 0204054f  .k......2......O
+ 0060 02000002 08050902 00000f04 05696e74  .............int
+ 0070 00064602 00000220 10340000 0010fc01  ..F.... .4......
+ 0080 00000704 ae000000 03040eae 00000007  ................
+ 0090 1e020000 0007cc01 00000107 5d020000  ............]...
+ 00a0 0207c301 00000307 20000000 04000204  ........ .......
+ 00b0 07250200 00067b01 0000030a 057d0000  .%....{......}..
+ 00c0 000a3600 00003003 0c660100 00047469  ..6...0..f....ti
+ 00d0 6400030e 0c710000 00000470 69640003  d....q.....pid..
+ 00e0 0f0c7100 00000405 00000000 031112b5  ..q.............
+ 00f0 00000008 04630003 130c7100 00000c04  .....c....q.....
+ 0100 74000314 0c710000 00100517 02000003  t....q..........
+ 0110 150c7100 00001405 77020000 03160c71  ..q.....w......q
+ 0120 00000018 05f40100 0003170c 71000000  ............q...
+ 0130 1c056502 00000319 09660100 00200465  ..e......f... .e
+ 0140 73700003 1a096601 00002404 65697000  sp....f...$.eip.
+ 0150 031b0966 01000028 053c0200 00031c09  ...f...(.<......
+ 0160 66010000 2c001104 06060000 00031d03  f...,...........
+ 0170 c1000000 0a650100 00080406 9b010000  .....e..........
+ 0180 046f626a 0004070c 9b010000 00055802  .obj..........X.
+ 0190 00000408 0c340000 0004000b 68010000  .....4......h...
+ 01a0 06140000 00040903 74010000 0ca60100  ........t.......
+ 01b0 005d6a00 00007c03 00005400 0000019c  .]j...|...T.....
+ 01c0 e8010000 03ef0100 005d20e8 01000002  .........] .....
+ 01d0 91000899 03000030 00000009 69005f6a  .......0....i._j
+ 01e0 00000002 91740000 0ba00100 000d5700  .....t........W.
+ 01f0 0000436a 00000041 0200003b 01000001  ..Cj...A...;....
+ 0200 9c530200 0003ef01 0000431e e8010000  .S........C.....
+ 0210 02910003 41020000 4331e801 00000291  ....A...C1......
+ 0220 04018802 00004407 6a000000 02916401  ......D.j.....d.
+ 0230 82020000 48076a00 00000291 6c087f02  ....H.j.....l...
+ 0240 00005300 00000969 00496a00 00000291  ..S....i.Ij.....
+ 0250 6800000d 8a010000 346a0000 00cc0100  h.......4j......
+ 0260 00750000 00019ca5 02000003 ef010000  .u..............
+ 0270 341ee801 00000291 00126f62 6a000134  4.........obj..4
+ 0280 2b9b0100 00029104 03580200 00343734  +........X...474
+ 0290 00000002 91080188 02000035 076a0000  ...........5.j..
+ 02a0 0002916c 000cb401 0000176a 00000089  ...l.......j....
+ 02b0 00000043 01000001 9c380300 0003ef01  ...C.....8......
+ 02c0 00001721 e8010000 02910003 82020000  ...!............
+ 02d0 172b6a00 00000291 04038802 00001736  .+j............6
+ 02e0 6a000000 02910801 27000000 18076a00  j.......'.....j.
+ 02f0 00000291 74018d02 00001907 6a000000  ....t.......j...
+ 0300 02917001 6f010000 1a076a00 00000291  ..p.o.....j.....
+ 0310 6c082d01 00009800 00000150 01000023  l.-........P...#
+ 0320 096a0000 00029168 01960100 00240c9b  .j.....h.....$..
+ 0330 01000002 91640000 130c0000 00010605  .....d..........
+ 0340 6a000000 00000000 89000000 019c03ef  j...............
+ 0350 01000006 1ae80100 00029100 01880200  ................
+ 0360 000a076a 00000002 9164015a 0100000e  ...j.....d.Z....
+ 0370 076a0000 0002916c 08420000 00420000  .j.....l.B...B..
+ 0380 00096900 0f6a0000 00029168 000000    ..i..j.....h... 
+Contents of section .debug_abbrev:
+ 0000 01340003 0e3a2101 3b0b390b 49130218  .4...:!.;.9.I...
+ 0010 00000224 000b0b3e 0b030e00 00030500  ...$...>........
+ 0020 030e3a21 013b0b39 0b491302 18000004  ..:!.;.9.I......
+ 0030 0d000308 3a0b3b0b 390b4913 380b0000  ....:.;.9.I.8...
+ 0040 050d0003 0e3a0b3b 0b390b49 13380b00  .....:.;.9.I.8..
+ 0050 00061600 030e3a0b 3b0b390b 49130000  ......:.;.9.I...
+ 0060 07280003 0e1c0b00 00080b01 11011206  .(..............
+ 0070 00000934 0003083a 21013b0b 39210c49  ...4...:!.;.9!.I
+ 0080 13021800 000a1301 030e0b0b 3a0b3b0b  ............:.;.
+ 0090 39211001 1300000b 0f000b21 04491300  9!.........!.I..
+ 00a0 000c2e01 3f19030e 3a21013b 0b392105  ....?...:!.;.9!.
+ 00b0 27194913 11011206 40187a19 01130000  '.I.....@.z.....
+ 00c0 0d2e013f 19030e3a 21013b0b 39210527  ...?...:!.;.9!.'
+ 00d0 19491311 01120640 187c1901 1300000e  .I.....@.|......
+ 00e0 1101250e 130b031f 1b1f1101 12061017  ..%.............
+ 00f0 00000f24 000b0b3e 0b030800 00100401  ...$...>........
+ 0100 030e3e0b 0b0b4913 3a0b3b0b 390b0113  ..>...I.:.;.9...
+ 0110 0000110f 000b0b00 00120500 03083a0b  ..............:.
+ 0120 3b0b390b 49130218 0000132e 013f1903  ;.9.I........?..
+ 0130 0e3a0b3b 0b390b27 19491311 01120640  .:.;.9.'.I.....@
+ 0140 187c1900 0000                        .|....          
+Contents of section .debug_aranges:
+ 0000 1c000000 02000000 00000400 00000000  ................
+ 0010 00000000 d0030000 00000000 00000000  ................
+Contents of section .debug_line:
+ 0000 24020000 05000400 3d000000 010101fb  $.......=.......
+ 0010 0e0d0001 01010100 00000100 00010101  ................
+ 0020 1f023000 00005900 00000201 1f020f05  ..0...Y.........
+ 0030 61000000 00680000 00006f00 00000177  a....h....o....w
+ 0040 00000001 7d000000 01052000 05020000  ....}..... .....
+ 0050 00001705 06f3050c 67050e76 05060813  ........g..v....
+ 0060 050c6705 07760516 75050cba 05036605  ..g..v..u.....f.
+ 0070 132f0510 00020401 083c0508 3d050e67  ./.......<..=..g
+ 0080 05290002 04027105 22000204 014a050a  .)....q."....J..
+ 0090 6c05013d 053c2f05 07f30516 67050758  l..=.</.....g..X
+ 00a0 051f6705 07660506 59052000 02040182  ..g..f..Y. .....
+ 00b0 052c0002 0401e405 38000204 013c0548  .,......8....<.H
+ 00c0 00020401 e4051900 0204013c 05144b05  ...........<..K.
+ 00d0 06680521 00020401 82052e00 020401e4  .h.!............
+ 00e0 053a0002 04013c05 4a000204 01e4051a  .:....<.J.......
+ 00f0 00020401 3c05144b 05066805 19bc0520  ....<..K..h.... 
+ 0100 e405093c 051b3d05 0ce4051c 590509e4  ...<..=.....Y...
+ 0110 052ce405 163c051b 3d0509e4 052be405  .,...<..=....+..
+ 0120 152e0509 2f051fe4 05096705 1ee4050a  ..../.....g.....
+ 0130 5a05015b 053d3505 0ef30506 08130512  Z..[.=5.........
+ 0140 00020401 66050c91 05077605 12e40507  ....f.....v.....
+ 0150 590513e4 05036705 0ad70501 59053734  Y.....g.....Y.74
+ 0160 050ef305 06081305 12000204 0166050c  .............f..
+ 0170 670507a0 050c7505 0374050d 2f0510e4  g.....u..t../...
+ 0180 051c2e05 08580529 00020401 4a052c00  .....X.)....J.,.
+ 0190 020401e4 05390002 04013c05 22000204  .....9....<."...
+ 01a0 0166050d 4b050767 051e0002 04022b05  .f..K..g......+.
+ 01b0 15000204 014a0506 88050c67 0519a005  .....J.....g....
+ 01c0 07083c05 23e40513 2e051a2f 0507083c  ..<.#....../...<
+ 01d0 0524e405 143c0507 3d051608 3c050767  .$...<..=...<..g
+ 01e0 0517083c 05037505 0ad70501 59052633  ...<..u.....Y.&3
+ 01f0 0506f305 1c000204 01660658 050c062f  .........f.X.../
+ 0200 05037405 0d2f0510 e405082e 050e4b05  ..t../........K.
+ 0210 27000204 02560515 00020401 4a050a95  '....V......J...
+ 0220 05015902 02000101                    ..Y.....        
+Contents of section .debug_str:
+ 0000 73746174 65007463 625f7400 68656170  state.tcb_t.heap
+ 0010 69667900 68656170 5f6e6f64 655f7400  ify.heap_node_t.
+ 0020 5a4f4d42 49450073 6d616c6c 6573745f  ZOMBIE.smallest_
+ 0030 76616c75 65007461 736b5f63 6f6e7472  value.task_contr
+ 0040 6f6c5f62 6c6f636b 00756e73 69676e65  ol_block.unsigne
+ 0050 64206368 61720068 6561705f 72656d6f  d char.heap_remo
+ 0060 7665006c 6f6e6720 756e7369 676e6564  ve.long unsigned
+ 0070 20696e74 0073686f 72742075 6e736967   int.short unsig
+ 0080 6e656420 696e7400 474e5520 43393920  ned int.GNU C99 
+ 0090 31332e33 2e30202d 6d333220 2d6d7475  13.3.0 -m32 -mtu
+ 00a0 6e653d67 656e6572 6963202d 6d617263  ne=generic -marc
+ 00b0 683d6936 3836202d 67202d73 74643d63  h=i686 -g -std=c
+ 00c0 3939202d 666e6f2d 6275696c 74696e20  99 -fno-builtin 
+ 00d0 2d666e6f 2d737461 636b2d70 726f7465  -fno-stack-prote
+ 00e0 63746f72 202d666e 6f2d7374 72696374  ctor -fno-strict
+ 00f0 2d616c69 6173696e 67202d66 6e6f2d64  -aliasing -fno-d
+ 0100 656c6574 652d6e75 6c6c2d70 6f696e74  elete-null-point
+ 0110 65722d63 6865636b 73202d66 6173796e  er-checks -fasyn
+ 0120 6368726f 6e6f7573 2d756e77 696e642d  chronous-unwind-
+ 0130 7461626c 6573202d 66737461 636b2d63  tables -fstack-c
+ 0140 6c617368 2d70726f 74656374 696f6e00  lash-protection.
+ 0150 74656d70 5f707269 6f007265 745f7661  temp_prio.ret_va
+ 0160 6c756573 00686561 705f6e6f 64650072  lues.heap_node.r
+ 0170 69676874 5f636869 6c640074 68726561  ight_child.threa
+ 0180 645f7374 6174655f 74006865 61705f69  d_state_t.heap_i
+ 0190 6e736572 74007465 6d705f6f 626a0075  nsert.temp_obj.u
+ 01a0 696e7433 32006765 745f6865 61705f73  int32.get_heap_s
+ 01b0 697a6500 68656170 6966795f 68656c70  ize.heapify_help
+ 01c0 65720052 554e4e41 424c4500 494e4954  er.RUNNABLE.INIT
+ 01d0 49414c49 5a454400 6c6f6e67 206c6f6e  IALIZED.long lon
+ 01e0 6720756e 7369676e 65642069 6e740068  g unsigned int.h
+ 01f0 65617000 69735f69 646c6500 74687265  eap.is_idle.thre
+ 0200 61645f73 74617465 006c6f6e 67206c6f  ad_state.long lo
+ 0210 6e672069 6e740062 75646765 7400554e  ng int.budget.UN
+ 0220 55534544 00756e73 69676e65 6420696e  USED.unsigned in
+ 0230 74007368 6f727420 696e7400 61726773  t.short int.args
+ 0240 006e6f64 65007569 6e743332 5f74006c  .node.uint32_t.l
+ 0250 6f6e6720 696e7400 7072696f 0052554e  ong int.prio.RUN
+ 0260 4e494e47 00667261 6d650073 69676e65  NING.frame.signe
+ 0270 64206368 61720070 6572696f 645f636e  d char.period_cn
+ 0280 7400696e 64657800 73697a65 006c6566  t.index.size.lef
+ 0290 745f6368 696c6400                    t_child.        
+Contents of section .debug_line_str:
+ 0000 68656170 2e63002f 686f6d65 2f706361  heap.c./home/pca
+ 0010 70706c65 2f476974 6875622f 6f732f64  pple/Github/os/d
+ 0020 6973636f 732d7065 72736973 616e7400  iscos-persisant.
+ 0030 2f686f6d 652f7063 6170706c 652f4769  /home/pcapple/Gi
+ 0040 74687562 2f6f732f 64697363 6f732d70  thub/os/discos-p
+ 0050 65727369 73616e74 00696e63 6c756465  ersisant.include
+ 0060 00686561 702e6300 68656170 2e630074  .heap.c.heap.c.t
+ 0070 79706573 2e680074 63622e68 00686561  ypes.h.tcb.h.hea
+ 0080 702e6800                             p.h.            
+Contents of section .comment:
+ 0000 00474343 3a202855 62756e74 75203133  .GCC: (Ubuntu 13
+ 0010 2e332e30 2d367562 756e7475 327e3234  .3.0-6ubuntu2~24
+ 0020 2e303429 2031332e 332e3000           .04) 13.3.0.    
+Contents of section .eh_frame:
+ 0000 14000000 00000000 017a5200 017c0801  .........zR..|..
+ 0010 1b0c0404 88010000 1c000000 1c000000  ................
+ 0020 00000000 89000000 00410e08 8502420d  .........A....B.
+ 0030 050285c5 0c040400 1c000000 3c000000  ............<...
+ 0040 89000000 43010000 00410e08 8502420d  ....C....A....B.
+ 0050 05033f01 c50c0404 1c000000 5c000000  ..?.........\...
+ 0060 cc010000 75000000 00410e08 8502420d  ....u....A....B.
+ 0070 050271c5 0c040400 1c000000 7c000000  ..q.........|...
+ 0080 41020000 3b010000 00410e08 8502420d  A...;....A....B.
+ 0090 05033701 c50c0404 1c000000 9c000000  ..7.............
+ 00a0 7c030000 54000000 00410e08 8502420d  |...T....A....B.
+ 00b0 050250c5 0c040400 10000000 bc000000  ..P.............
+ 00c0 00000000 04000000 00000000           ............    
+
+Disassembly of section .text:
+
+00000000 <heapify>:
+   0:	55                   	push   %ebp
+   1:	89 e5                	mov    %esp,%ebp
+   3:	83 ec 18             	sub    $0x18,%esp
+   6:	e8 fc ff ff ff       	call   7 <heapify+0x7>
+   b:	05 01 00 00 00       	add    $0x1,%eax
+  10:	83 7d 08 00          	cmpl   $0x0,0x8(%ebp)
+  14:	75 07                	jne    1d <heapify+0x1d>
+  16:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+  1b:	eb 6a                	jmp    87 <heapify+0x87>
+  1d:	83 ec 0c             	sub    $0xc,%esp
+  20:	ff 75 08             	push   0x8(%ebp)
+  23:	e8 fc ff ff ff       	call   24 <heapify+0x24>
+  28:	83 c4 10             	add    $0x10,%esp
+  2b:	89 45 ec             	mov    %eax,-0x14(%ebp)
+  2e:	83 7d ec 01          	cmpl   $0x1,-0x14(%ebp)
+  32:	7f 07                	jg     3b <heapify+0x3b>
+  34:	b8 00 00 00 00       	mov    $0x0,%eax
+  39:	eb 4c                	jmp    87 <heapify+0x87>
+  3b:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
+  42:	8b 45 ec             	mov    -0x14(%ebp),%eax
+  45:	89 c2                	mov    %eax,%edx
+  47:	c1 ea 1f             	shr    $0x1f,%edx
+  4a:	01 d0                	add    %edx,%eax
+  4c:	d1 f8                	sar    $1,%eax
+  4e:	83 e8 01             	sub    $0x1,%eax
+  51:	89 45 f0             	mov    %eax,-0x10(%ebp)
+  54:	eb 28                	jmp    7e <heapify+0x7e>
+  56:	83 ec 04             	sub    $0x4,%esp
+  59:	ff 75 ec             	push   -0x14(%ebp)
+  5c:	ff 75 f0             	push   -0x10(%ebp)
+  5f:	ff 75 08             	push   0x8(%ebp)
+  62:	e8 fc ff ff ff       	call   63 <heapify+0x63>
+  67:	83 c4 10             	add    $0x10,%esp
+  6a:	01 45 f4             	add    %eax,-0xc(%ebp)
+  6d:	83 7d f4 00          	cmpl   $0x0,-0xc(%ebp)
+  71:	79 07                	jns    7a <heapify+0x7a>
+  73:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+  78:	eb 0d                	jmp    87 <heapify+0x87>
+  7a:	83 6d f0 01          	subl   $0x1,-0x10(%ebp)
+  7e:	83 7d f0 00          	cmpl   $0x0,-0x10(%ebp)
+  82:	79 d2                	jns    56 <heapify+0x56>
+  84:	8b 45 f4             	mov    -0xc(%ebp),%eax
+  87:	c9                   	leave
+  88:	c3                   	ret
+
+00000089 <heapify_helper>:
+  89:	55                   	push   %ebp
+  8a:	89 e5                	mov    %esp,%ebp
+  8c:	83 ec 20             	sub    $0x20,%esp
+  8f:	e8 fc ff ff ff       	call   90 <heapify_helper+0x7>
+  94:	05 01 00 00 00       	add    $0x1,%eax
+  99:	8b 45 0c             	mov    0xc(%ebp),%eax
+  9c:	89 45 fc             	mov    %eax,-0x4(%ebp)
+  9f:	8b 45 0c             	mov    0xc(%ebp),%eax
+  a2:	01 c0                	add    %eax,%eax
+  a4:	83 c0 01             	add    $0x1,%eax
+  a7:	89 45 f8             	mov    %eax,-0x8(%ebp)
+  aa:	8b 45 0c             	mov    0xc(%ebp),%eax
+  ad:	83 c0 01             	add    $0x1,%eax
+  b0:	01 c0                	add    %eax,%eax
+  b2:	89 45 f4             	mov    %eax,-0xc(%ebp)
+  b5:	8b 45 f8             	mov    -0x8(%ebp),%eax
+  b8:	3b 45 10             	cmp    0x10(%ebp),%eax
+  bb:	7d 2e                	jge    eb <heapify_helper+0x62>
+  bd:	8b 45 f8             	mov    -0x8(%ebp),%eax
+  c0:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+  c7:	8b 45 08             	mov    0x8(%ebp),%eax
+  ca:	01 d0                	add    %edx,%eax
+  cc:	8b 50 04             	mov    0x4(%eax),%edx
+  cf:	8b 45 fc             	mov    -0x4(%ebp),%eax
+  d2:	8d 0c c5 00 00 00 00 	lea    0x0(,%eax,8),%ecx
+  d9:	8b 45 08             	mov    0x8(%ebp),%eax
+  dc:	01 c8                	add    %ecx,%eax
+  de:	8b 40 04             	mov    0x4(%eax),%eax
+  e1:	39 c2                	cmp    %eax,%edx
+  e3:	73 06                	jae    eb <heapify_helper+0x62>
+  e5:	8b 45 f8             	mov    -0x8(%ebp),%eax
+  e8:	89 45 fc             	mov    %eax,-0x4(%ebp)
+  eb:	8b 45 f4             	mov    -0xc(%ebp),%eax
+  ee:	3b 45 10             	cmp    0x10(%ebp),%eax
+  f1:	7d 2e                	jge    121 <heapify_helper+0x98>
+  f3:	8b 45 f4             	mov    -0xc(%ebp),%eax
+  f6:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+  fd:	8b 45 08             	mov    0x8(%ebp),%eax
+ 100:	01 d0                	add    %edx,%eax
+ 102:	8b 50 04             	mov    0x4(%eax),%edx
+ 105:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 108:	8d 0c c5 00 00 00 00 	lea    0x0(,%eax,8),%ecx
+ 10f:	8b 45 08             	mov    0x8(%ebp),%eax
+ 112:	01 c8                	add    %ecx,%eax
+ 114:	8b 40 04             	mov    0x4(%eax),%eax
+ 117:	39 c2                	cmp    %eax,%edx
+ 119:	73 06                	jae    121 <heapify_helper+0x98>
+ 11b:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 11e:	89 45 fc             	mov    %eax,-0x4(%ebp)
+ 121:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 124:	3b 45 0c             	cmp    0xc(%ebp),%eax
+ 127:	0f 84 98 00 00 00    	je     1c5 <heapify_helper+0x13c>
+ 12d:	8b 45 0c             	mov    0xc(%ebp),%eax
+ 130:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 137:	8b 45 08             	mov    0x8(%ebp),%eax
+ 13a:	01 d0                	add    %edx,%eax
+ 13c:	8b 40 04             	mov    0x4(%eax),%eax
+ 13f:	89 45 f0             	mov    %eax,-0x10(%ebp)
+ 142:	8b 45 0c             	mov    0xc(%ebp),%eax
+ 145:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 14c:	8b 45 08             	mov    0x8(%ebp),%eax
+ 14f:	01 d0                	add    %edx,%eax
+ 151:	8b 00                	mov    (%eax),%eax
+ 153:	89 45 ec             	mov    %eax,-0x14(%ebp)
+ 156:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 159:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 160:	8b 45 08             	mov    0x8(%ebp),%eax
+ 163:	01 d0                	add    %edx,%eax
+ 165:	8b 55 0c             	mov    0xc(%ebp),%edx
+ 168:	8d 0c d5 00 00 00 00 	lea    0x0(,%edx,8),%ecx
+ 16f:	8b 55 08             	mov    0x8(%ebp),%edx
+ 172:	01 ca                	add    %ecx,%edx
+ 174:	8b 40 04             	mov    0x4(%eax),%eax
+ 177:	89 42 04             	mov    %eax,0x4(%edx)
+ 17a:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 17d:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 184:	8b 45 08             	mov    0x8(%ebp),%eax
+ 187:	01 d0                	add    %edx,%eax
+ 189:	8b 55 0c             	mov    0xc(%ebp),%edx
+ 18c:	8d 0c d5 00 00 00 00 	lea    0x0(,%edx,8),%ecx
+ 193:	8b 55 08             	mov    0x8(%ebp),%edx
+ 196:	01 ca                	add    %ecx,%edx
+ 198:	8b 00                	mov    (%eax),%eax
+ 19a:	89 02                	mov    %eax,(%edx)
+ 19c:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 19f:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 1a6:	8b 45 08             	mov    0x8(%ebp),%eax
+ 1a9:	01 c2                	add    %eax,%edx
+ 1ab:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ 1ae:	89 42 04             	mov    %eax,0x4(%edx)
+ 1b1:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 1b4:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 1bb:	8b 45 08             	mov    0x8(%ebp),%eax
+ 1be:	01 c2                	add    %eax,%edx
+ 1c0:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 1c3:	89 02                	mov    %eax,(%edx)
+ 1c5:	b8 00 00 00 00       	mov    $0x0,%eax
+ 1ca:	c9                   	leave
+ 1cb:	c3                   	ret
+
+000001cc <heap_insert>:
+ 1cc:	55                   	push   %ebp
+ 1cd:	89 e5                	mov    %esp,%ebp
+ 1cf:	83 ec 18             	sub    $0x18,%esp
+ 1d2:	e8 fc ff ff ff       	call   1d3 <heap_insert+0x7>
+ 1d7:	05 01 00 00 00       	add    $0x1,%eax
+ 1dc:	83 ec 0c             	sub    $0xc,%esp
+ 1df:	ff 75 08             	push   0x8(%ebp)
+ 1e2:	e8 fc ff ff ff       	call   1e3 <heap_insert+0x17>
+ 1e7:	83 c4 10             	add    $0x10,%esp
+ 1ea:	89 45 f4             	mov    %eax,-0xc(%ebp)
+ 1ed:	83 7d f4 ff          	cmpl   $0xffffffff,-0xc(%ebp)
+ 1f1:	74 09                	je     1fc <heap_insert+0x30>
+ 1f3:	81 7d f4 ff 03 00 00 	cmpl   $0x3ff,-0xc(%ebp)
+ 1fa:	7e 07                	jle    203 <heap_insert+0x37>
+ 1fc:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+ 201:	eb 3c                	jmp    23f <heap_insert+0x73>
+ 203:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 206:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 20d:	8b 45 08             	mov    0x8(%ebp),%eax
+ 210:	01 c2                	add    %eax,%edx
+ 212:	8b 45 0c             	mov    0xc(%ebp),%eax
+ 215:	89 02                	mov    %eax,(%edx)
+ 217:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 21a:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 221:	8b 45 08             	mov    0x8(%ebp),%eax
+ 224:	01 c2                	add    %eax,%edx
+ 226:	8b 45 10             	mov    0x10(%ebp),%eax
+ 229:	89 42 04             	mov    %eax,0x4(%edx)
+ 22c:	83 ec 0c             	sub    $0xc,%esp
+ 22f:	ff 75 08             	push   0x8(%ebp)
+ 232:	e8 fc ff ff ff       	call   233 <heap_insert+0x67>
+ 237:	83 c4 10             	add    $0x10,%esp
+ 23a:	b8 00 00 00 00       	mov    $0x0,%eax
+ 23f:	c9                   	leave
+ 240:	c3                   	ret
+
+00000241 <heap_remove>:
+ 241:	55                   	push   %ebp
+ 242:	89 e5                	mov    %esp,%ebp
+ 244:	83 ec 18             	sub    $0x18,%esp
+ 247:	e8 fc ff ff ff       	call   248 <heap_remove+0x7>
+ 24c:	05 01 00 00 00       	add    $0x1,%eax
+ 251:	83 ec 0c             	sub    $0xc,%esp
+ 254:	ff 75 08             	push   0x8(%ebp)
+ 257:	e8 fc ff ff ff       	call   258 <heap_remove+0x17>
+ 25c:	83 c4 10             	add    $0x10,%esp
+ 25f:	89 45 ec             	mov    %eax,-0x14(%ebp)
+ 262:	83 7d ec ff          	cmpl   $0xffffffff,-0x14(%ebp)
+ 266:	74 06                	je     26e <heap_remove+0x2d>
+ 268:	83 7d ec 00          	cmpl   $0x0,-0x14(%ebp)
+ 26c:	75 0a                	jne    278 <heap_remove+0x37>
+ 26e:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+ 273:	e9 02 01 00 00       	jmp    37a <heap_remove+0x139>
+ 278:	c7 45 f4 ff ff ff ff 	movl   $0xffffffff,-0xc(%ebp)
+ 27f:	c7 45 f0 00 00 00 00 	movl   $0x0,-0x10(%ebp)
+ 286:	eb 42                	jmp    2ca <heap_remove+0x89>
+ 288:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ 28b:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 292:	8b 45 08             	mov    0x8(%ebp),%eax
+ 295:	01 d0                	add    %edx,%eax
+ 297:	8b 10                	mov    (%eax),%edx
+ 299:	8b 45 0c             	mov    0xc(%ebp),%eax
+ 29c:	8b 00                	mov    (%eax),%eax
+ 29e:	39 c2                	cmp    %eax,%edx
+ 2a0:	75 24                	jne    2c6 <heap_remove+0x85>
+ 2a2:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ 2a5:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 2ac:	8b 45 08             	mov    0x8(%ebp),%eax
+ 2af:	01 d0                	add    %edx,%eax
+ 2b1:	8b 50 04             	mov    0x4(%eax),%edx
+ 2b4:	8b 45 0c             	mov    0xc(%ebp),%eax
+ 2b7:	8b 40 04             	mov    0x4(%eax),%eax
+ 2ba:	39 c2                	cmp    %eax,%edx
+ 2bc:	75 08                	jne    2c6 <heap_remove+0x85>
+ 2be:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ 2c1:	89 45 f4             	mov    %eax,-0xc(%ebp)
+ 2c4:	eb 0c                	jmp    2d2 <heap_remove+0x91>
+ 2c6:	83 45 f0 01          	addl   $0x1,-0x10(%ebp)
+ 2ca:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ 2cd:	3b 45 ec             	cmp    -0x14(%ebp),%eax
+ 2d0:	7c b6                	jl     288 <heap_remove+0x47>
+ 2d2:	83 7d f4 ff          	cmpl   $0xffffffff,-0xc(%ebp)
+ 2d6:	75 0a                	jne    2e2 <heap_remove+0xa1>
+ 2d8:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+ 2dd:	e9 98 00 00 00       	jmp    37a <heap_remove+0x139>
+ 2e2:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 2e5:	05 ff ff ff 1f       	add    $0x1fffffff,%eax
+ 2ea:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 2f1:	8b 45 08             	mov    0x8(%ebp),%eax
+ 2f4:	01 d0                	add    %edx,%eax
+ 2f6:	8b 55 f4             	mov    -0xc(%ebp),%edx
+ 2f9:	8d 0c d5 00 00 00 00 	lea    0x0(,%edx,8),%ecx
+ 300:	8b 55 08             	mov    0x8(%ebp),%edx
+ 303:	01 ca                	add    %ecx,%edx
+ 305:	8b 00                	mov    (%eax),%eax
+ 307:	89 02                	mov    %eax,(%edx)
+ 309:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 30c:	05 ff ff ff 1f       	add    $0x1fffffff,%eax
+ 311:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 318:	8b 45 08             	mov    0x8(%ebp),%eax
+ 31b:	01 d0                	add    %edx,%eax
+ 31d:	8b 55 f4             	mov    -0xc(%ebp),%edx
+ 320:	8d 0c d5 00 00 00 00 	lea    0x0(,%edx,8),%ecx
+ 327:	8b 55 08             	mov    0x8(%ebp),%edx
+ 32a:	01 ca                	add    %ecx,%edx
+ 32c:	8b 40 04             	mov    0x4(%eax),%eax
+ 32f:	89 42 04             	mov    %eax,0x4(%edx)
+ 332:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 335:	05 ff ff ff 1f       	add    $0x1fffffff,%eax
+ 33a:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 341:	8b 45 08             	mov    0x8(%ebp),%eax
+ 344:	01 d0                	add    %edx,%eax
+ 346:	c7 00 00 00 00 00    	movl   $0x0,(%eax)
+ 34c:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 34f:	05 ff ff ff 1f       	add    $0x1fffffff,%eax
+ 354:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 35b:	8b 45 08             	mov    0x8(%ebp),%eax
+ 35e:	01 d0                	add    %edx,%eax
+ 360:	c7 40 04 00 00 00 00 	movl   $0x0,0x4(%eax)
+ 367:	83 ec 0c             	sub    $0xc,%esp
+ 36a:	ff 75 08             	push   0x8(%ebp)
+ 36d:	e8 fc ff ff ff       	call   36e <heap_remove+0x12d>
+ 372:	83 c4 10             	add    $0x10,%esp
+ 375:	b8 00 00 00 00       	mov    $0x0,%eax
+ 37a:	c9                   	leave
+ 37b:	c3                   	ret
+
+0000037c <get_heap_size>:
+ 37c:	55                   	push   %ebp
+ 37d:	89 e5                	mov    %esp,%ebp
+ 37f:	83 ec 10             	sub    $0x10,%esp
+ 382:	e8 fc ff ff ff       	call   383 <get_heap_size+0x7>
+ 387:	05 01 00 00 00       	add    $0x1,%eax
+ 38c:	83 7d 08 00          	cmpl   $0x0,0x8(%ebp)
+ 390:	75 07                	jne    399 <get_heap_size+0x1d>
+ 392:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+ 397:	eb 35                	jmp    3ce <get_heap_size+0x52>
+ 399:	c7 45 fc 00 00 00 00 	movl   $0x0,-0x4(%ebp)
+ 3a0:	eb 1e                	jmp    3c0 <get_heap_size+0x44>
+ 3a2:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 3a5:	8d 14 c5 00 00 00 00 	lea    0x0(,%eax,8),%edx
+ 3ac:	8b 45 08             	mov    0x8(%ebp),%eax
+ 3af:	01 d0                	add    %edx,%eax
+ 3b1:	8b 00                	mov    (%eax),%eax
+ 3b3:	85 c0                	test   %eax,%eax
+ 3b5:	75 05                	jne    3bc <get_heap_size+0x40>
+ 3b7:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 3ba:	eb 12                	jmp    3ce <get_heap_size+0x52>
+ 3bc:	83 45 fc 01          	addl   $0x1,-0x4(%ebp)
+ 3c0:	81 7d fc ff 03 00 00 	cmpl   $0x3ff,-0x4(%ebp)
+ 3c7:	7e d9                	jle    3a2 <get_heap_size+0x26>
+ 3c9:	b8 00 00 00 00       	mov    $0x0,%eax
+ 3ce:	c9                   	leave
+ 3cf:	c3                   	ret
+
+Disassembly of section .text.__x86.get_pc_thunk.ax:
+
+00000000 <__x86.get_pc_thunk.ax>:
+   0:	8b 04 24             	mov    (%esp),%eax
+   3:	c3                   	ret

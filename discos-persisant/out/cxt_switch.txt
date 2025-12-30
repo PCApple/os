@@ -1,0 +1,32 @@
+
+asm/cxt_switch.o:     file format elf32-i386
+
+Contents of section .text:
+ 0000 8b4c2404 8b542408 55535657 892189d4  .L$..T$.USVW.!..
+ 0010 5f5e5b5d c38b5424 0489d45f 5e5b5dc3  _^[]..T$..._^[].
+
+Disassembly of section .text:
+
+00000000 <context_switch>:
+   0:	8b 4c 24 04          	mov    0x4(%esp),%ecx
+   4:	8b 54 24 08          	mov    0x8(%esp),%edx
+   8:	55                   	push   %ebp
+   9:	53                   	push   %ebx
+   a:	56                   	push   %esi
+   b:	57                   	push   %edi
+   c:	89 21                	mov    %esp,(%ecx)
+   e:	89 d4                	mov    %edx,%esp
+  10:	5f                   	pop    %edi
+  11:	5e                   	pop    %esi
+  12:	5b                   	pop    %ebx
+  13:	5d                   	pop    %ebp
+  14:	c3                   	ret
+
+00000015 <first_context_switch>:
+  15:	8b 54 24 04          	mov    0x4(%esp),%edx
+  19:	89 d4                	mov    %edx,%esp
+  1b:	5f                   	pop    %edi
+  1c:	5e                   	pop    %esi
+  1d:	5b                   	pop    %ebx
+  1e:	5d                   	pop    %ebp
+  1f:	c3                   	ret

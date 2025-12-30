@@ -1,0 +1,20 @@
+
+asm/lgdt.o:     file format elf32-i386
+
+Contents of section .text:
+ 0000 8b442404 0f0110ea 0e000000 080066b8  .D$...........f.
+ 0010 10008ed8 8ec08ee0 8ee88ed0 c3        .............   
+
+Disassembly of section .text:
+
+00000000 <lgdt>:
+   0:	8b 44 24 04          	mov    0x4(%esp),%eax
+   4:	0f 01 10             	lgdtl  (%eax)
+   7:	ea 0e 00 00 00 08 00 	ljmp   $0x8,$0xe
+   e:	66 b8 10 00          	mov    $0x10,%ax
+  12:	8e d8                	mov    %eax,%ds
+  14:	8e c0                	mov    %eax,%es
+  16:	8e e0                	mov    %eax,%fs
+  18:	8e e8                	mov    %eax,%gs
+  1a:	8e d0                	mov    %eax,%ss
+  1c:	c3                   	ret

@@ -1,0 +1,24 @@
+Near term goals:
+disk permenence
+    need disk driver
+Bug fix scheduler
+    weird skip of time, maybe have a dynamic timer
+Mid term goals:
+user mode
+FIFO scheduling mode
+    could also have SJF(i think I want to do this first)
+syscalls
+    sbrk
+    mmap
+    exit
+    write
+    fork
+    spawn
+    exec
+    wait
+virtual memory(big one)
+
+
+FAR off goals:
+shell
+

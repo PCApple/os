@@ -1,0 +1,522 @@
+
+pic.o:     file format elf32-i386
+
+Contents of section .group:
+ 0000 01000000 06000000                    ........        
+Contents of section .text:
+ 0000 5589e583 ec14e8fc ffffff05 01000000  U...............
+ 0010 8b450866 8945ec0f b745ec89 c2ec8845  .E.f.E...E.....E
+ 0020 ff0fb645 ffc9c355 89e583ec 08e8fcff  ...E...U........
+ 0030 ffff0501 0000008b 55088b45 0c8855fc  ........U..E..U.
+ 0040 668945f8 0fb645fc 0fb755f8 ee90c9c3  f.E...E...U.....
+ 0050 5589e5e8 fcffffff 05010000 00688000  U............h..
+ 0060 00006a00 e8beffff ff83c408 90c9c355  ..j............U
+ 0070 89e583ec 04e8fcff ffff0501 0000008b  ................
+ 0080 45088845 fc807dfc 07760f68 a0000000  E..E..}..v.h....
+ 0090 6a20e890 ffffff83 c4086a20 6a20e884  j ........j j ..
+ 00a0 ffffff83 c40890c9 c35589e5 e8fcffff  .........U......
+ 00b0 ff050100 00006a20 6a11e868 ffffff83  ......j j..h....
+ 00c0 c408e889 ffffff68 a0000000 6a11e854  .......h....j..T
+ 00d0 ffffff83 c408e875 ffffff8b 45080fb6  .......u....E...
+ 00e0 c06a2150 e83effff ff83c408 e85fffff  .j!P.>......._..
+ 00f0 ff8b450c 0fb6c068 a1000000 50e825ff  ..E....h....P.%.
+ 0100 ffff83c4 08e846ff ffff6a21 6a04e814  ......F...j!j...
+ 0110 ffffff83 c408e835 ffffff68 a1000000  .......5...h....
+ 0120 6a02e800 ffffff83 c408e821 ffffff6a  j..........!...j
+ 0130 216a01e8 effeffff 83c408e8 10ffffff  !j..............
+ 0140 68a10000 006a01e8 dbfeffff 83c408e8  h....j..........
+ 0150 fcfeffff 6a216a00 e8cafeff ff83c408  ....j!j.........
+ 0160 68a10000 006a00e8 bbfeffff 83c40890  h....j..........
+ 0170 c9c35589 e5e8fcff ffff0501 0000006a  ..U............j
+ 0180 2168ff00 0000e89c feffff83 c40868a1  !h............h.
+ 0190 00000068 ff000000 e88afeff ff83c408  ...h............
+ 01a0 90c9c355 89e55383 ec14e8fc ffffff05  ...U..S.........
+ 01b0 01000000 8b450888 45e8807d e8077708  .....E..E..}..w.
+ 01c0 66c745fa 2100eb0a 66c745fa a100806d  f.E.!...f.E....m
+ 01d0 e8080fb7 45fa50e8 24feffff 83c40489  ....E.P.$.......
+ 01e0 c30fb645 e8ba0100 000089c1 d3e289d0  ...E............
+ 01f0 09d88845 f90fb755 fa0fb645 f95250e8  ...E...U...E.RP.
+ 0200 23feffff 83c40890 8b5dfcc9 c35589e5  #........]...U..
+ 0210 5383ec14 e8fcffff ff050100 00008b45  S..............E
+ 0220 088845e8 807de807 770866c7 45fa2100  ..E..}..w.f.E.!.
+ 0230 eb0a66c7 45faa100 806de808 0fb745fa  ..f.E....m....E.
+ 0240 50e8bafd ffff83c4 0489c30f b645e8ba  P............E..
+ 0250 01000000 89c1d3e2 89d0f7d0 21d88845  ............!..E
+ 0260 f90fb755 fa0fb645 f95250e8 b7fdffff  ...U...E.RP.....
+ 0270 83c40890 8b5dfcc9 c35589e5 53e8fcff  .....]...U..S...
+ 0280 ffff0501 0000008b 45080fb6 c06a2050  ........E....j P
+ 0290 e892fdff ff83c408 8b45080f b6c068a0  .........E....h.
+ 02a0 00000050 e87efdff ff83c408 68a00000  ...P.~......h...
+ 02b0 00e84afd ffff83c4 040fb6c0 c1e00889  ..J.............
+ 02c0 c36a20e8 38fdffff 83c4040f b6c009d8  .j .8...........
+ 02d0 8b5dfcc9 c35589e5 e8fcffff ff050100  .]...U..........
+ 02e0 00006a0a e890ffff ff83c404 c9c35589  ..j...........U.
+ 02f0 e5e8fcff ffff0501 0000006a 0be877ff  ...........j..w.
+ 0300 ffff83c4 04c9c355 89e5e8fc ffffff05  .......U........
+ 0310 01000000 6a286a20 e8fcffff ff83c408  ....j(j ........
+ 0320 90c9c3                               ...             
+Contents of section .text.__x86.get_pc_thunk.ax:
+ 0000 8b0424c3                             ..$.            
+Contents of section .debug_info:
+ 0000 57020000 05000104 00000000 08930000  W...............
+ 0010 000c2900 00000000 00000000 00002303  ..)...........#.
+ 0020 00000000 0000038d 00000008 17310000  .............1..
+ 0030 00010108 6d000000 03680100 00091c43  ....m....h.....C
+ 0040 00000001 02074100 00000104 077b0000  ......A......{..
+ 0050 00010807 88010000 010106e2 01000001  ................
+ 0060 0205c101 00000104 05d90100 00010805  ................
+ 0070 ae010000 09040569 6e740003 9f010000  .......int......
+ 0080 1e0f2600 000003cb 0100001f 10380000  ..&..........8..
+ 0090 000a0202 00000267 06070300 001c0000  .......g........
+ 00a0 00019c06 00000000 61860000 00ee0200  ........a.......
+ 00b0 00190000 00019c06 74010000 5b860000  ........t...[...
+ 00c0 00d50200 00190000 00019c0b 22000000  ............"...
+ 00d0 02511186 00000079 0200005c 00000001  .Q.....y...\....
+ 00e0 9cf50000 00026f01 00000251 27740000  ......o....Q't..
+ 00f0 00029100 00045e00 0000410d 0200006c  ......^...A....l
+ 0100 00000001 9c350100 00028001 00000241  .....5.........A
+ 0110 1d7b0000 00029160 05bc0100 00430e86  .{.....`.....C..
+ 0120 00000002 9172051c 00000044 0d7b0000  .....r.....D.{..
+ 0130 00029171 00043400 000031a3 0100006a  ...q..4...1....j
+ 0140 00000001 9c750100 00028001 00000231  .....u.........1
+ 0150 1b7b0000 00029160 05bc0100 00330e86  .{.....`.....3..
+ 0160 00000002 9172051c 00000034 0d7b0000  .....r.....4.{..
+ 0170 00029171 000cee01 00000229 06720100  ...q.......).r..
+ 0180 00310000 00019c04 54000000 0fa90000  .1......T.......
+ 0190 00c90000 00019cba 01000002 0c000000  ................
+ 01a0 020f1474 00000002 91000214 00000002  ...t............
+ 01b0 0f217400 00000291 0400045b 01000005  .!t........[....
+ 01c0 6f000000 3a000000 019cde01 00000769  o...:..........i
+ 01d0 72710002 051b7b00 00000291 74000dfa  rq....{.....t...
+ 01e0 01000001 2d145000 00001f00 0000019c  ....-.P.........
+ 01f0 0ed40100 00010d14 27000000 29000000  ........'...)...
+ 0200 019c2502 00000775 63680001 0d283100  ..%....uch...(1.
+ 0210 00000291 7402a701 0000010d 3c430000  ....t.......<C..
+ 0220 00029170 000f696e 62000105 1d310000  ...p..inb....1..
+ 0230 00000000 00270000 00019c02 a7010000  .....'..........
+ 0240 01053143 00000002 91641075 63680001  ..1C.....d.uch..
+ 0250 07133100 00000291 770000             ..1.....w..     
+Contents of section .debug_abbrev:
+ 0000 0124000b 0b3e0b03 0e000002 0500030e  .$...>..........
+ 0010 3a0b3b0b 390b4913 02180000 03160003  :.;.9.I.........
+ 0020 0e3a2103 3b0b390b 49130000 042e013f  .:!.;.9.I......?
+ 0030 19030e3a 21023b0b 39210627 19110112  ...:!.;.9!.'....
+ 0040 0640187c 19011300 00053400 030e3a21  .@.|......4...:!
+ 0050 023b0b39 0b491302 18000006 2e003f19  .;.9.I........?.
+ 0060 030e3a21 023b0b39 210a2719 49131101  ..:!.;.9!.'.I...
+ 0070 12064018 7c190000 07050003 083a0b3b  ..@.|........:.;
+ 0080 0b390b49 13021800 00081101 250e130b  .9.I........%...
+ 0090 031f1b1f 11011206 10170000 0924000b  .............$..
+ 00a0 0b3e0b03 0800000a 2e003f19 030e3a0b  .>........?...:.
+ 00b0 3b0b390b 11011206 40187c19 00000b2e  ;.9.....@.|.....
+ 00c0 01030e3a 0b3b0b39 0b271949 13110112  ...:.;.9.'.I....
+ 00d0 0640187c 19011300 000c2e00 3f19030e  .@.|........?...
+ 00e0 3a0b3b0b 390b2719 11011206 40187c19  :.;.9.'.....@.|.
+ 00f0 00000d2e 00030e3a 0b3b0b39 0b271911  .......:.;.9.'..
+ 0100 01120640 187c1900 000e2e01 030e3a0b  ...@.|........:.
+ 0110 3b0b390b 27191101 12064018 7a190113  ;.9.'.....@.z...
+ 0120 00000f2e 0103083a 0b3b0b39 0b271949  .......:.;.9.'.I
+ 0130 13110112 0640187a 19000010 34000308  .....@.z....4...
+ 0140 3a0b3b0b 390b4913 02180000 00        :.;.9.I......   
+Contents of section .debug_aranges:
+ 0000 1c000000 02000000 00000400 00000000  ................
+ 0010 00000000 23030000 00000000 00000000  ....#...........
+Contents of section .debug_line:
+ 0000 63010000 05000400 38000000 010101fb  c.......8.......
+ 0010 0e0d0001 01010100 00000100 00010101  ................
+ 0020 1f022f00 00005800 00000201 1f020f04  ../...X.........
+ 0030 60000000 00660000 00016b00 00000071  `....f....k....q
+ 0040 00000001 053a0005 02000000 00160505  .....:..........
+ 0050 086a050c 9f05014b 05453005 0508bc05  .j.....K.E0.....
+ 0060 0191031e 3c0505c9 0501e504 0203563c  ....<.........V<
+ 0070 05080859 05096705 05e60501 bb410502  ...Y..g......A..
+ 0080 c90505bb 05025905 05e50502 59050508  ......Y.....Y...
+ 0090 13050259 0505083d 05025905 05bb0502  ...Y...=..Y.....
+ 00a0 590505e5 05025a05 05bb0502 590505e5  Y.....Z.....Y...
+ 00b0 05025bbb 0501e540 0505c9e5 05010821  ..[....@.......!
+ 00c0 41050708 6a050e67 84051167 050d4c00  A...j..g...g..L.
+ 00d0 02040106 c8051c00 02040106 2e051700  ................
+ 00e0 020401e4 050b0002 04012e05 053d0501  .............=..
+ 00f0 08216a05 07086a05 0e678405 1167050d  .!j...j..g...g..
+ 0100 4c000204 0106c805 1d000204 01062e05  L...............
+ 0110 17000204 01e4050b 00020401 4a05053d  ............J..=
+ 0120 05010821 6a0505d9 0813050d 083d0525  ...!j........=.%
+ 0130 00020401 c8052700 02040182 00020402  ......'.........
+ 0140 069e0525 00020402 063c0501 2f5c050c  ...%.....<../\..
+ 0150 c905019f 32050cc9 05019f32 0505cb05  ....2......2....
+ 0160 01bc0203 000101                      .......         
+Contents of section .debug_str:
+ 0000 7069635f 6765745f 69737200 6f666673  pic_get_isr.offs
+ 0010 65743100 6f666673 65743200 76616c75  et1.offset2.valu
+ 0020 65005f5f 7069635f 6765745f 6972715f  e.__pic_get_irq_
+ 0030 72656700 4952515f 7365745f 6d61736b  reg.IRQ_set_mask
+ 0040 0073686f 72742075 6e736967 6e656420  .short unsigned 
+ 0050 696e7400 7069635f 72656d61 70004952  int.pic_remap.IR
+ 0060 515f636c 6561725f 6d61736b 00756e73  Q_clear_mask.uns
+ 0070 69676e65 64206368 6172006c 6f6e6720  igned char.long 
+ 0080 756e7369 676e6564 20696e74 0075696e  unsigned int.uin
+ 0090 74380047 4e552043 39392031 332e332e  t8.GNU C99 13.3.
+ 00a0 30202d6d 3332202d 6d74756e 653d6765  0 -m32 -mtune=ge
+ 00b0 6e657269 63202d6d 61726368 3d693638  neric -march=i68
+ 00c0 36202d67 202d7374 643d6339 39202d66  6 -g -std=c99 -f
+ 00d0 6e6f2d62 75696c74 696e202d 666e6f2d  no-builtin -fno-
+ 00e0 73746163 6b2d7072 6f746563 746f7220  stack-protector 
+ 00f0 2d666e6f 2d737472 6963742d 616c6961  -fno-strict-alia
+ 0100 73696e67 202d666e 6f2d6465 6c657465  sing -fno-delete
+ 0110 2d6e756c 6c2d706f 696e7465 722d6368  -null-pointer-ch
+ 0120 65636b73 202d6661 73796e63 68726f6e  ecks -fasynchron
+ 0130 6f75732d 756e7769 6e642d74 61626c65  ous-unwind-table
+ 0140 73202d66 73746163 6b2d636c 6173682d  s -fstack-clash-
+ 0150 70726f74 65637469 6f6e0070 69635f73  protection.pic_s
+ 0160 656e645f 656f6900 75696e74 3136006f  end_eoi.uint16.o
+ 0170 63773300 7069635f 6765745f 69727200  cw3.pic_get_irr.
+ 0180 4952516c 696e6500 6c6f6e67 206c6f6e  IRQline.long lon
+ 0190 6720756e 7369676e 65642069 6e740075  g unsigned int.u
+ 01a0 696e7438 5f740075 73506f72 74006c6f  int8_t.usPort.lo
+ 01b0 6e67206c 6f6e6720 696e7400 706f7274  ng long int.port
+ 01c0 0073686f 72742069 6e740075 696e7431  .short int.uint1
+ 01d0 365f7400 6f757462 006c6f6e 6720696e  6_t.outb.long in
+ 01e0 74007369 676e6564 20636861 72005049  t.signed char.PI
+ 01f0 435f6469 7361626c 6500696f 5f776169  C_disable.io_wai
+ 0200 74005049 435f696e 697400             t.PIC_init.     
+Contents of section .debug_line_str:
+ 0000 2f686f6d 652f7063 6170706c 652f4769  /home/pcapple/Gi
+ 0010 74687562 2f6f732f 64697363 6f732d70  thub/os/discos-p
+ 0020 65727369 73616e74 00706963 2e63002f  ersisant.pic.c./
+ 0030 686f6d65 2f706361 70706c65 2f476974  home/pcapple/Git
+ 0040 6875622f 6f732f64 6973636f 732d7065  hub/os/discos-pe
+ 0050 72736973 616e7400 696e636c 75646500  rsisant.include.
+ 0060 7069632e 6300696f 2e680070 69632e63  pic.c.io.h.pic.c
+ 0070 00747970 65732e68 00                 .types.h.       
+Contents of section .comment:
+ 0000 00474343 3a202855 62756e74 75203133  .GCC: (Ubuntu 13
+ 0010 2e332e30 2d367562 756e7475 327e3234  .3.0-6ubuntu2~24
+ 0020 2e303429 2031332e 332e3000           .04) 13.3.0.    
+Contents of section .eh_frame:
+ 0000 14000000 00000000 017a5200 017c0801  .........zR..|..
+ 0010 1b0c0404 88010000 1c000000 1c000000  ................
+ 0020 00000000 27000000 00410e08 8502420d  ....'....A....B.
+ 0030 0563c50c 04040000 1c000000 3c000000  .c..........<...
+ 0040 27000000 29000000 00410e08 8502420d  '...)....A....B.
+ 0050 0565c50c 04040000 1c000000 5c000000  .e..........\...
+ 0060 50000000 1f000000 00410e08 8502420d  P........A....B.
+ 0070 055bc50c 04040000 1c000000 7c000000  .[..........|...
+ 0080 6f000000 3a000000 00410e08 8502420d  o...:....A....B.
+ 0090 0576c50c 04040000 1c000000 9c000000  .v..............
+ 00a0 a9000000 c9000000 00410e08 8502420d  .........A....B.
+ 00b0 0502c5c5 0c040400 1c000000 bc000000  ................
+ 00c0 72010000 31000000 00410e08 8502420d  r...1....A....B.
+ 00d0 056dc50c 04040000 20000000 dc000000  .m...... .......
+ 00e0 a3010000 6a000000 00410e08 8502420d  ....j....A....B.
+ 00f0 05448303 0262c5c3 0c040400 20000000  .D...b...... ...
+ 0100 00010000 0d020000 6c000000 00410e08  ........l....A..
+ 0110 8502420d 05448303 0264c5c3 0c040400  ..B..D...d......
+ 0120 20000000 24010000 79020000 5c000000   ...$...y...\...
+ 0130 00410e08 8502420d 05418303 0257c5c3  .A....B..A...W..
+ 0140 0c040400 1c000000 48010000 d5020000  ........H.......
+ 0150 19000000 00410e08 8502420d 0555c50c  .....A....B..U..
+ 0160 04040000 1c000000 68010000 ee020000  ........h.......
+ 0170 19000000 00410e08 8502420d 0555c50c  .....A....B..U..
+ 0180 04040000 1c000000 88010000 07030000  ................
+ 0190 1c000000 00410e08 8502420d 0558c50c  .....A....B..X..
+ 01a0 04040000 10000000 a8010000 00000000  ................
+ 01b0 04000000 00000000                    ........        
+
+Disassembly of section .text:
+
+00000000 <inb>:
+   0:	55                   	push   %ebp
+   1:	89 e5                	mov    %esp,%ebp
+   3:	83 ec 14             	sub    $0x14,%esp
+   6:	e8 fc ff ff ff       	call   7 <inb+0x7>
+   b:	05 01 00 00 00       	add    $0x1,%eax
+  10:	8b 45 08             	mov    0x8(%ebp),%eax
+  13:	66 89 45 ec          	mov    %ax,-0x14(%ebp)
+  17:	0f b7 45 ec          	movzwl -0x14(%ebp),%eax
+  1b:	89 c2                	mov    %eax,%edx
+  1d:	ec                   	in     (%dx),%al
+  1e:	88 45 ff             	mov    %al,-0x1(%ebp)
+  21:	0f b6 45 ff          	movzbl -0x1(%ebp),%eax
+  25:	c9                   	leave
+  26:	c3                   	ret
+
+00000027 <outb>:
+  27:	55                   	push   %ebp
+  28:	89 e5                	mov    %esp,%ebp
+  2a:	83 ec 08             	sub    $0x8,%esp
+  2d:	e8 fc ff ff ff       	call   2e <outb+0x7>
+  32:	05 01 00 00 00       	add    $0x1,%eax
+  37:	8b 55 08             	mov    0x8(%ebp),%edx
+  3a:	8b 45 0c             	mov    0xc(%ebp),%eax
+  3d:	88 55 fc             	mov    %dl,-0x4(%ebp)
+  40:	66 89 45 f8          	mov    %ax,-0x8(%ebp)
+  44:	0f b6 45 fc          	movzbl -0x4(%ebp),%eax
+  48:	0f b7 55 f8          	movzwl -0x8(%ebp),%edx
+  4c:	ee                   	out    %al,(%dx)
+  4d:	90                   	nop
+  4e:	c9                   	leave
+  4f:	c3                   	ret
+
+00000050 <io_wait>:
+  50:	55                   	push   %ebp
+  51:	89 e5                	mov    %esp,%ebp
+  53:	e8 fc ff ff ff       	call   54 <io_wait+0x4>
+  58:	05 01 00 00 00       	add    $0x1,%eax
+  5d:	68 80 00 00 00       	push   $0x80
+  62:	6a 00                	push   $0x0
+  64:	e8 be ff ff ff       	call   27 <outb>
+  69:	83 c4 08             	add    $0x8,%esp
+  6c:	90                   	nop
+  6d:	c9                   	leave
+  6e:	c3                   	ret
+
+0000006f <pic_send_eoi>:
+  6f:	55                   	push   %ebp
+  70:	89 e5                	mov    %esp,%ebp
+  72:	83 ec 04             	sub    $0x4,%esp
+  75:	e8 fc ff ff ff       	call   76 <pic_send_eoi+0x7>
+  7a:	05 01 00 00 00       	add    $0x1,%eax
+  7f:	8b 45 08             	mov    0x8(%ebp),%eax
+  82:	88 45 fc             	mov    %al,-0x4(%ebp)
+  85:	80 7d fc 07          	cmpb   $0x7,-0x4(%ebp)
+  89:	76 0f                	jbe    9a <pic_send_eoi+0x2b>
+  8b:	68 a0 00 00 00       	push   $0xa0
+  90:	6a 20                	push   $0x20
+  92:	e8 90 ff ff ff       	call   27 <outb>
+  97:	83 c4 08             	add    $0x8,%esp
+  9a:	6a 20                	push   $0x20
+  9c:	6a 20                	push   $0x20
+  9e:	e8 84 ff ff ff       	call   27 <outb>
+  a3:	83 c4 08             	add    $0x8,%esp
+  a6:	90                   	nop
+  a7:	c9                   	leave
+  a8:	c3                   	ret
+
+000000a9 <pic_remap>:
+  a9:	55                   	push   %ebp
+  aa:	89 e5                	mov    %esp,%ebp
+  ac:	e8 fc ff ff ff       	call   ad <pic_remap+0x4>
+  b1:	05 01 00 00 00       	add    $0x1,%eax
+  b6:	6a 20                	push   $0x20
+  b8:	6a 11                	push   $0x11
+  ba:	e8 68 ff ff ff       	call   27 <outb>
+  bf:	83 c4 08             	add    $0x8,%esp
+  c2:	e8 89 ff ff ff       	call   50 <io_wait>
+  c7:	68 a0 00 00 00       	push   $0xa0
+  cc:	6a 11                	push   $0x11
+  ce:	e8 54 ff ff ff       	call   27 <outb>
+  d3:	83 c4 08             	add    $0x8,%esp
+  d6:	e8 75 ff ff ff       	call   50 <io_wait>
+  db:	8b 45 08             	mov    0x8(%ebp),%eax
+  de:	0f b6 c0             	movzbl %al,%eax
+  e1:	6a 21                	push   $0x21
+  e3:	50                   	push   %eax
+  e4:	e8 3e ff ff ff       	call   27 <outb>
+  e9:	83 c4 08             	add    $0x8,%esp
+  ec:	e8 5f ff ff ff       	call   50 <io_wait>
+  f1:	8b 45 0c             	mov    0xc(%ebp),%eax
+  f4:	0f b6 c0             	movzbl %al,%eax
+  f7:	68 a1 00 00 00       	push   $0xa1
+  fc:	50                   	push   %eax
+  fd:	e8 25 ff ff ff       	call   27 <outb>
+ 102:	83 c4 08             	add    $0x8,%esp
+ 105:	e8 46 ff ff ff       	call   50 <io_wait>
+ 10a:	6a 21                	push   $0x21
+ 10c:	6a 04                	push   $0x4
+ 10e:	e8 14 ff ff ff       	call   27 <outb>
+ 113:	83 c4 08             	add    $0x8,%esp
+ 116:	e8 35 ff ff ff       	call   50 <io_wait>
+ 11b:	68 a1 00 00 00       	push   $0xa1
+ 120:	6a 02                	push   $0x2
+ 122:	e8 00 ff ff ff       	call   27 <outb>
+ 127:	83 c4 08             	add    $0x8,%esp
+ 12a:	e8 21 ff ff ff       	call   50 <io_wait>
+ 12f:	6a 21                	push   $0x21
+ 131:	6a 01                	push   $0x1
+ 133:	e8 ef fe ff ff       	call   27 <outb>
+ 138:	83 c4 08             	add    $0x8,%esp
+ 13b:	e8 10 ff ff ff       	call   50 <io_wait>
+ 140:	68 a1 00 00 00       	push   $0xa1
+ 145:	6a 01                	push   $0x1
+ 147:	e8 db fe ff ff       	call   27 <outb>
+ 14c:	83 c4 08             	add    $0x8,%esp
+ 14f:	e8 fc fe ff ff       	call   50 <io_wait>
+ 154:	6a 21                	push   $0x21
+ 156:	6a 00                	push   $0x0
+ 158:	e8 ca fe ff ff       	call   27 <outb>
+ 15d:	83 c4 08             	add    $0x8,%esp
+ 160:	68 a1 00 00 00       	push   $0xa1
+ 165:	6a 00                	push   $0x0
+ 167:	e8 bb fe ff ff       	call   27 <outb>
+ 16c:	83 c4 08             	add    $0x8,%esp
+ 16f:	90                   	nop
+ 170:	c9                   	leave
+ 171:	c3                   	ret
+
+00000172 <PIC_disable>:
+ 172:	55                   	push   %ebp
+ 173:	89 e5                	mov    %esp,%ebp
+ 175:	e8 fc ff ff ff       	call   176 <PIC_disable+0x4>
+ 17a:	05 01 00 00 00       	add    $0x1,%eax
+ 17f:	6a 21                	push   $0x21
+ 181:	68 ff 00 00 00       	push   $0xff
+ 186:	e8 9c fe ff ff       	call   27 <outb>
+ 18b:	83 c4 08             	add    $0x8,%esp
+ 18e:	68 a1 00 00 00       	push   $0xa1
+ 193:	68 ff 00 00 00       	push   $0xff
+ 198:	e8 8a fe ff ff       	call   27 <outb>
+ 19d:	83 c4 08             	add    $0x8,%esp
+ 1a0:	90                   	nop
+ 1a1:	c9                   	leave
+ 1a2:	c3                   	ret
+
+000001a3 <IRQ_set_mask>:
+ 1a3:	55                   	push   %ebp
+ 1a4:	89 e5                	mov    %esp,%ebp
+ 1a6:	53                   	push   %ebx
+ 1a7:	83 ec 14             	sub    $0x14,%esp
+ 1aa:	e8 fc ff ff ff       	call   1ab <IRQ_set_mask+0x8>
+ 1af:	05 01 00 00 00       	add    $0x1,%eax
+ 1b4:	8b 45 08             	mov    0x8(%ebp),%eax
+ 1b7:	88 45 e8             	mov    %al,-0x18(%ebp)
+ 1ba:	80 7d e8 07          	cmpb   $0x7,-0x18(%ebp)
+ 1be:	77 08                	ja     1c8 <IRQ_set_mask+0x25>
+ 1c0:	66 c7 45 fa 21 00    	movw   $0x21,-0x6(%ebp)
+ 1c6:	eb 0a                	jmp    1d2 <IRQ_set_mask+0x2f>
+ 1c8:	66 c7 45 fa a1 00    	movw   $0xa1,-0x6(%ebp)
+ 1ce:	80 6d e8 08          	subb   $0x8,-0x18(%ebp)
+ 1d2:	0f b7 45 fa          	movzwl -0x6(%ebp),%eax
+ 1d6:	50                   	push   %eax
+ 1d7:	e8 24 fe ff ff       	call   0 <inb>
+ 1dc:	83 c4 04             	add    $0x4,%esp
+ 1df:	89 c3                	mov    %eax,%ebx
+ 1e1:	0f b6 45 e8          	movzbl -0x18(%ebp),%eax
+ 1e5:	ba 01 00 00 00       	mov    $0x1,%edx
+ 1ea:	89 c1                	mov    %eax,%ecx
+ 1ec:	d3 e2                	shl    %cl,%edx
+ 1ee:	89 d0                	mov    %edx,%eax
+ 1f0:	09 d8                	or     %ebx,%eax
+ 1f2:	88 45 f9             	mov    %al,-0x7(%ebp)
+ 1f5:	0f b7 55 fa          	movzwl -0x6(%ebp),%edx
+ 1f9:	0f b6 45 f9          	movzbl -0x7(%ebp),%eax
+ 1fd:	52                   	push   %edx
+ 1fe:	50                   	push   %eax
+ 1ff:	e8 23 fe ff ff       	call   27 <outb>
+ 204:	83 c4 08             	add    $0x8,%esp
+ 207:	90                   	nop
+ 208:	8b 5d fc             	mov    -0x4(%ebp),%ebx
+ 20b:	c9                   	leave
+ 20c:	c3                   	ret
+
+0000020d <IRQ_clear_mask>:
+ 20d:	55                   	push   %ebp
+ 20e:	89 e5                	mov    %esp,%ebp
+ 210:	53                   	push   %ebx
+ 211:	83 ec 14             	sub    $0x14,%esp
+ 214:	e8 fc ff ff ff       	call   215 <IRQ_clear_mask+0x8>
+ 219:	05 01 00 00 00       	add    $0x1,%eax
+ 21e:	8b 45 08             	mov    0x8(%ebp),%eax
+ 221:	88 45 e8             	mov    %al,-0x18(%ebp)
+ 224:	80 7d e8 07          	cmpb   $0x7,-0x18(%ebp)
+ 228:	77 08                	ja     232 <IRQ_clear_mask+0x25>
+ 22a:	66 c7 45 fa 21 00    	movw   $0x21,-0x6(%ebp)
+ 230:	eb 0a                	jmp    23c <IRQ_clear_mask+0x2f>
+ 232:	66 c7 45 fa a1 00    	movw   $0xa1,-0x6(%ebp)
+ 238:	80 6d e8 08          	subb   $0x8,-0x18(%ebp)
+ 23c:	0f b7 45 fa          	movzwl -0x6(%ebp),%eax
+ 240:	50                   	push   %eax
+ 241:	e8 ba fd ff ff       	call   0 <inb>
+ 246:	83 c4 04             	add    $0x4,%esp
+ 249:	89 c3                	mov    %eax,%ebx
+ 24b:	0f b6 45 e8          	movzbl -0x18(%ebp),%eax
+ 24f:	ba 01 00 00 00       	mov    $0x1,%edx
+ 254:	89 c1                	mov    %eax,%ecx
+ 256:	d3 e2                	shl    %cl,%edx
+ 258:	89 d0                	mov    %edx,%eax
+ 25a:	f7 d0                	not    %eax
+ 25c:	21 d8                	and    %ebx,%eax
+ 25e:	88 45 f9             	mov    %al,-0x7(%ebp)
+ 261:	0f b7 55 fa          	movzwl -0x6(%ebp),%edx
+ 265:	0f b6 45 f9          	movzbl -0x7(%ebp),%eax
+ 269:	52                   	push   %edx
+ 26a:	50                   	push   %eax
+ 26b:	e8 b7 fd ff ff       	call   27 <outb>
+ 270:	83 c4 08             	add    $0x8,%esp
+ 273:	90                   	nop
+ 274:	8b 5d fc             	mov    -0x4(%ebp),%ebx
+ 277:	c9                   	leave
+ 278:	c3                   	ret
+
+00000279 <__pic_get_irq_reg>:
+ 279:	55                   	push   %ebp
+ 27a:	89 e5                	mov    %esp,%ebp
+ 27c:	53                   	push   %ebx
+ 27d:	e8 fc ff ff ff       	call   27e <__pic_get_irq_reg+0x5>
+ 282:	05 01 00 00 00       	add    $0x1,%eax
+ 287:	8b 45 08             	mov    0x8(%ebp),%eax
+ 28a:	0f b6 c0             	movzbl %al,%eax
+ 28d:	6a 20                	push   $0x20
+ 28f:	50                   	push   %eax
+ 290:	e8 92 fd ff ff       	call   27 <outb>
+ 295:	83 c4 08             	add    $0x8,%esp
+ 298:	8b 45 08             	mov    0x8(%ebp),%eax
+ 29b:	0f b6 c0             	movzbl %al,%eax
+ 29e:	68 a0 00 00 00       	push   $0xa0
+ 2a3:	50                   	push   %eax
+ 2a4:	e8 7e fd ff ff       	call   27 <outb>
+ 2a9:	83 c4 08             	add    $0x8,%esp
+ 2ac:	68 a0 00 00 00       	push   $0xa0
+ 2b1:	e8 4a fd ff ff       	call   0 <inb>
+ 2b6:	83 c4 04             	add    $0x4,%esp
+ 2b9:	0f b6 c0             	movzbl %al,%eax
+ 2bc:	c1 e0 08             	shl    $0x8,%eax
+ 2bf:	89 c3                	mov    %eax,%ebx
+ 2c1:	6a 20                	push   $0x20
+ 2c3:	e8 38 fd ff ff       	call   0 <inb>
+ 2c8:	83 c4 04             	add    $0x4,%esp
+ 2cb:	0f b6 c0             	movzbl %al,%eax
+ 2ce:	09 d8                	or     %ebx,%eax
+ 2d0:	8b 5d fc             	mov    -0x4(%ebp),%ebx
+ 2d3:	c9                   	leave
+ 2d4:	c3                   	ret
+
+000002d5 <pic_get_irr>:
+ 2d5:	55                   	push   %ebp
+ 2d6:	89 e5                	mov    %esp,%ebp
+ 2d8:	e8 fc ff ff ff       	call   2d9 <pic_get_irr+0x4>
+ 2dd:	05 01 00 00 00       	add    $0x1,%eax
+ 2e2:	6a 0a                	push   $0xa
+ 2e4:	e8 90 ff ff ff       	call   279 <__pic_get_irq_reg>
+ 2e9:	83 c4 04             	add    $0x4,%esp
+ 2ec:	c9                   	leave
+ 2ed:	c3                   	ret
+
+000002ee <pic_get_isr>:
+ 2ee:	55                   	push   %ebp
+ 2ef:	89 e5                	mov    %esp,%ebp
+ 2f1:	e8 fc ff ff ff       	call   2f2 <pic_get_isr+0x4>
+ 2f6:	05 01 00 00 00       	add    $0x1,%eax
+ 2fb:	6a 0b                	push   $0xb
+ 2fd:	e8 77 ff ff ff       	call   279 <__pic_get_irq_reg>
+ 302:	83 c4 04             	add    $0x4,%esp
+ 305:	c9                   	leave
+ 306:	c3                   	ret
+
+00000307 <PIC_init>:
+ 307:	55                   	push   %ebp
+ 308:	89 e5                	mov    %esp,%ebp
+ 30a:	e8 fc ff ff ff       	call   30b <PIC_init+0x4>
+ 30f:	05 01 00 00 00       	add    $0x1,%eax
+ 314:	6a 28                	push   $0x28
+ 316:	6a 20                	push   $0x20
+ 318:	e8 fc ff ff ff       	call   319 <PIC_init+0x12>
+ 31d:	83 c4 08             	add    $0x8,%esp
+ 320:	90                   	nop
+ 321:	c9                   	leave
+ 322:	c3                   	ret
+
+Disassembly of section .text.__x86.get_pc_thunk.ax:
+
+00000000 <__x86.get_pc_thunk.ax>:
+   0:	8b 04 24             	mov    (%esp),%eax
+   3:	c3                   	ret
