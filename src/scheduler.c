@@ -12,7 +12,7 @@ extern void first_context_switch(void* new_sp);
 
 
 int thread_init() {
-  tcb_array = (tcb_t*) mem_kalloc(0); // get a page to store TCBs
+  tcb_array = (tcb_t*) mem_kalloc(PAGE_SIZE); // get a page to store TCBs
   memset(tcb_array, 0, PAGE_SIZE);
   if (!tcb_array) return -1;
   tcb_count = 0;
@@ -274,7 +274,7 @@ int scheduler_init(){
     tcb_t *idle = (tcb_t*) thread_get_new_tcb();
     if (!idle) return -1;
     idle->is_idle = 1;
-    void* frame = mem_kalloc(0);
+    void* frame = mem_kalloc(PAGE_SIZE);
     void* new_stack = frame + PAGE_SIZE; // allocate stack for new thread
     idle->tid = 0;
     idle->pid = 0; // main pid

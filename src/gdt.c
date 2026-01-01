@@ -29,6 +29,8 @@ int gdt_init(){
     gdt_set_entry(0,0,0,0,0); // null segment
     gdt_set_entry(1,0,0xFFFFF,KERN_CODE_ACCESS,KERN_FLAGS); // kernel code segment
     gdt_set_entry(2, 0,0xFFFFFFFF, KERN_DATA_ACCESS, KERN_FLAGS); // kernel data segment
+    gdt_set_entry(3, 0, 0xFFFFFFFF, USER_CODE_ACCESS, USER_FLAGS); // user code segment
+    gdt_set_entry(4, 0, 0xFFFFFFFF, USER_DATA_ACCESS, USER_FLAGS); // user data segment
     gdtr.base = (uint32_t)&gdt;
     gdtr.limit = (uint32_t)GDT_SIZE * sizeof(gdt_entry_t);
     lgdt((uint32_t)&gdtr);

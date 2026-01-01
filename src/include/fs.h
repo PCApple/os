@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "types.h"
 #include "io.h"
+#include "utils.h"
 
 #define MAX_NUM_THREADS 16
 #define TEST_THREAD_NUM 0 // for testing purposes in userspace, we only use one thread

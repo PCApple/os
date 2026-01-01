@@ -1,4 +1,5 @@
 #include "include/test_funcs.h"
+#include "include/mem.h"
 
 
 void test_write_final(void *args) {
@@ -6,7 +7,7 @@ void test_write_final(void *args) {
     if (targs == NULL) return;
     uint32_t tid = scheduler.current->tid;
     char_bufs_t *bufs =
-        (char_bufs_t *)mem_kalloc(0); // tid = 0; period = 1; c = 2;
+        (char_bufs_t *)mem_kalloc(PAGE_SIZE); // tid = 0; period = 1; c = 2;
     bufs->zero = 0;
     itoa(bufs[0].buf, 'd', tid);
     itoa(bufs[1].buf, 'd', scheduler.current->t);
@@ -40,13 +41,13 @@ void test_simple_fs(void *args) {
         return;
     }
     terminal_writestring("/SmallFile1 opened successfully\n");
-    char* write_buf1 = mem_kalloc(0);
+    char* write_buf1 = mem_kalloc(PAGE_SIZE);
     for (int i = 0; i < 100; i++) {
         write_buf1[i] = 'a' + (i % 26);
     }
     fs_write(sfFD, write_buf1, 26);
     fs_lseek(sfFD, 0);
-    char* read_buf1 = mem_kalloc(0);
+    char* read_buf1 = mem_kalloc(PAGE_SIZE);
     memset(read_buf1, 0, 100);
     int read_ret = fs_read(sfFD, read_buf1, 26);
     if (read_ret < 0) {
@@ -113,11 +114,11 @@ void test_big_fs(void *args) {
         return;
     }
     terminal_writestring("Opened /BigFile successfully\n");
-    void* ones = mem_kalloc(0);
+    void* ones = mem_kalloc(PAGE_SIZE);
     memset(ones, '1', BLOCK_SIZE);
-    void* twos = mem_kalloc(0);
+    void* twos = mem_kalloc(PAGE_SIZE);
     memset(twos, '2', BLOCK_SIZE);
-    void* threes = mem_kalloc(0);
+    void* threes = mem_kalloc(PAGE_SIZE);
     memset(threes, '3', BLOCK_SIZE);
     // write direct blocks
     for (int i = 0; i < N_DIRECT_POINTERS; i++) {

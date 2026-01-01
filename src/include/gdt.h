@@ -2,11 +2,14 @@
 #define __GDT_H__
 #include "types.h"
 
-#define GDT_SIZE 3 // null, kernel code, kernel data
+#define GDT_SIZE 5 // null, kernel code, kernel data, user code, user data
 
 #define KERN_CODE_ACCESS 0x9A
 #define KERN_DATA_ACCESS 0x92
+#define USER_CODE_ACCESS 0xFA
+#define USER_DATA_ACCESS 0xF2
 #define KERN_FLAGS 0xC
+#define USER_FLAGS 0xC
 typedef struct gdt_entry {
     uint16_t limit_low;
     uint16_t base_low;

@@ -7,14 +7,7 @@ static fd_table_t fd_table[MAX_NUM_THREADS]; // global file descriptor table
 
 
 // -------------------------------- internal helper functions --------------------------------//
-int ceiling(int numerator, int denominator) {
-    if (numerator % denominator == 0) {
-        return numerator / denominator;
-    }
-    else{
-        return (numerator / denominator) + 1;
-    }
-}
+
 /*
     returns a pointer to the a free data block and marks it as used in the block bitmap and decrements n_free_blocks in the superblock
     returns NULL if no free block is available

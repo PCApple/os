@@ -8,7 +8,7 @@ int thread_create(void *func, thread_args_t *args) {
   if (tcb_count >= MAX_TASKS) return -1;
   uint32_t c = args->c;
   uint32_t t = args->t;
-  void* frame = mem_kalloc(0);
+  void* frame = mem_kalloc(PAGE_SIZE);
   if (frame == NULL) return -1; /* allocation failed */
   void* new_stack = (void*)((char*)frame + PAGE_SIZE); /* allocate stack for new thread */
   tcb_t* new_tcb = thread_get_new_tcb();

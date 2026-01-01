@@ -1,3 +1,9 @@
+DONE:
+revamp kalloc/kfree to take size
+    also now does variable memory initialization
+Next goal:
+
+TSS setup
 Near term goals:
 disk permenence
     need disk driver
@@ -17,8 +23,11 @@ syscalls
     exec
     wait
 virtual memory(big one)
-
-
+pages dont need to be contigously allocated(this might be hard)
 FAR off goals:
 shell
+
+very far off:
+multiple cores
+64 bit
 

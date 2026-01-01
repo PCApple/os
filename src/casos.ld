@@ -25,6 +25,7 @@ ENTRY(_start)
 SECTIONS {
   /* Bootstrap physical section, at virtual and physical address 0x100000 */
   . = 0x100000 + SIZEOF_HEADERS;
+  __kernel_start = .;
 
   . = ALIGN(0x1000);
   .text : { *(.multiboot .text) }
@@ -37,7 +38,7 @@ SECTIONS {
 
   . = ALIGN(0x1000);
   .bss : { *(.bss COMMON) }
-
   . = ALIGN(0x1000);
+   __kernel_end = .;
   .eh_frame (NOLOAD) : { *(.eh_frame) } : NONE
 }

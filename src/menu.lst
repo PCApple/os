@@ -1,4 +1,0 @@
-title MEMOS
-root (hd0,0)
-kernel /boot/memos-2
-boot
