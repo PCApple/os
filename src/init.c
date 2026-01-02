@@ -1,10 +1,8 @@
 #include "include/multiboot.h"
 #include "include/mem.h"
 #include "include/print.h"
-#include "include/pic.h"
 #include "include/scheduler.h"
 #include "include/thread.h"
-#include "include/int.h"
 #include "include/gdt.h"
 #include "include/fs.h"
 #include "include/ide.h"
@@ -28,6 +26,7 @@ void init(unsigned int magic_num, multiboot_info_t* binfo) {
   }
   printk("Memory initialization succeeded: total pages = %d\n", mem_ret);
   ide_initialize(0x1F0, 0x3F6, 0x170, 0x376, 0x0);
+  printk("IDE initialized\n");
   //PIC_init();
   //printk("PIC initialized\n");
   //idt_init();

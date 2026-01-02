@@ -1,4 +1,5 @@
 #include "include/ide.h"
+#include "include/types.h"
 
 channel_t channels[2]; // 0: primary channel, 1: secondary channel
 ide_device_t ide_devices[4]; // 0: primary master, 1: primary slave, 2: secondary master, 3: secondary slave
@@ -7,12 +8,24 @@ uint8_t ide_buf[2048] = {0};
 volatile unsigned static char ide_irq_invoked = 0;
 unsigned static char atapi_packet[12] = {0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-static inline void ide_400ns(int ch) {
-    ide_read(ch, ATA_REG_ALTSTATUS);
-    ide_read(ch, ATA_REG_ALTSTATUS);
-    ide_read(ch, ATA_REG_ALTSTATUS);
-    ide_read(ch, ATA_REG_ALTSTATUS);
+
+int ide_cmd_translation(uint8_t lba_mode, uint8_t dma, uint8_t direction) {
+    int cmd = 0;
+    if (lba_mode == 0 && dma == 0 && direction == 0) cmd = ATA_CMD_READ_PIO;
+    if (lba_mode == 1 && dma == 0 && direction == 0) cmd = ATA_CMD_READ_PIO;   
+    if (lba_mode == 2 && dma == 0 && direction == 0) cmd = ATA_CMD_READ_PIO_EXT;   
+    if (lba_mode == 0 && dma == 1 && direction == 0) cmd = ATA_CMD_READ_DMA;
+    if (lba_mode == 1 && dma == 1 && direction == 0) cmd = ATA_CMD_READ_DMA;
+    if (lba_mode == 2 && dma == 1 && direction == 0) cmd = ATA_CMD_READ_DMA_EXT;
+    if (lba_mode == 0 && dma == 0 && direction == 1) cmd = ATA_CMD_WRITE_PIO;
+    if (lba_mode == 1 && dma == 0 && direction == 1) cmd = ATA_CMD_WRITE_PIO;
+    if (lba_mode == 2 && dma == 0 && direction == 1) cmd = ATA_CMD_WRITE_PIO_EXT;
+    if (lba_mode == 0 && dma == 1 && direction == 1) cmd = ATA_CMD_WRITE_DMA;
+    if (lba_mode == 1 && dma == 1 && direction == 1) cmd = ATA_CMD_WRITE_DMA;
+    if (lba_mode == 2 && dma == 1 && direction == 1) cmd = ATA_CMD_WRITE_DMA_EXT;
+    return cmd;
 }
+
 
 void ide_write(uint8_t channel, uint8_t reg, uint8_t data) {
     if (reg > 0x07 && reg < 0x0C)
@@ -44,6 +57,14 @@ uint8_t ide_read(uint8_t channel, uint8_t reg){
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
     return result;
 }
+
+static inline void ide_400ns(int ch) {
+    ide_read(ch, ATA_REG_ALTSTATUS);
+    ide_read(ch, ATA_REG_ALTSTATUS);
+    ide_read(ch, ATA_REG_ALTSTATUS);
+    ide_read(ch, ATA_REG_ALTSTATUS);
+}
+
 uint8_t ide_polling(uint8_t channel, uint32_t advanced_check) {
     // (I) Delay 400 nanosecond for BSY to be set:
    // -------------------------------------------------
@@ -122,6 +143,114 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
 
    return err;
 }
+
+uint8_t ide_ata_access(uint8_t direction, uint8_t drive, uint32_t lba, uint8_t numsects, uint16_t selector, uint32_t edi){
+    uint32_t cmd;
+    uint8_t lba_mode,dma;
+    uint8_t lba_io[6];
+    uint8_t channel = ide_devices[drive].Channel;
+    uint8_t slavebit = ide_devices[drive].Drive;
+    uint16_t bus = channels[channel].base;
+    uint32_t words = 256;
+    uint16_t cyl, i;
+    uint8_t head, sect;
+    uint8_t err;
+    if (lba > 0x0FFFFFFF) { // lba48
+        lba_mode = 2;
+        lba_io[0] = (lba & 0xFF);
+        lba_io[1] = (lba >> 8) & 0xFF;
+        lba_io[2] = (lba >> 16) & 0xFF;
+        lba_io[3] = (lba >> 24) & 0x0FF;
+        lba_io[4] = 0;  
+        lba_io[5] = 0;
+        head = 0;      
+    } else if (ide_devices[drive].Capabilities & 0x200) { // lba28
+        lba_mode = 1;
+        lba_io[0] = (lba & 0xFF);
+        lba_io[1] = (lba >> 8) & 0xFF;
+        lba_io[2] = (lba >> 16) & 0xFF;
+        lba_io[3] = 0;
+        lba_io[4] = 0;
+        lba_io[5] = 0;
+        head = (lba >> 24) & 0xF;
+    } else { //chs
+        lba_mode = 0;
+        sect = (lba % 63) + 1;
+        cyl = (lba + 1 - sect) / (16 * 63);
+        lba_io[0] = sect;
+        lba_io[1] = (cyl & 0xFF);
+        lba_io[2] = (cyl >> 8) & 0xFF;
+        lba_io[3] = 0;
+        lba_io[4] = 0;
+        lba_io[5] = 0;
+        head = (lba + 1  - sect) % (16 * 63) / (63);
+    }
+    dma = 0; //PIO fro now
+    while (ide_read(channel, ATA_REG_STATUS) & ATA_SR_BSY);
+    if (lba_mode == 0) {
+        ide_write(channel, ATA_REG_HDDEVSEL, 0xA0 | (slavebit << 4) | head);
+    } else {
+        ide_write(channel, ATA_REG_HDDEVSEL, 0xE0 | (slavebit << 4) | head);
+    }
+    ide_400ns(channel);
+    if (lba_mode == 2) {
+        ide_write(channel, ATA_REG_SECCOUNT1, 0);
+        ide_400ns(channel);
+        ide_write(channel, ATA_REG_LBA3, lba_io[3]);
+        ide_400ns(channel);
+        ide_write(channel, ATA_REG_LBA4, lba_io[4]);
+        ide_400ns(channel);
+        ide_write(channel, ATA_REG_LBA5, lba_io[5]);
+        ide_400ns(channel);
+    }
+    ide_write(channel, ATA_REG_LBA0, lba_io[0]);
+    ide_400ns(channel);
+    ide_write(channel, ATA_REG_LBA1, lba_io[1]);
+    ide_400ns(channel);
+    ide_write(channel, ATA_REG_LBA2, lba_io[2]);
+    ide_400ns(channel);
+
+    cmd = ide_cmd_translation(lba_mode, dma, direction);
+    ide_write(channel, ATA_REG_COMMAND, cmd);
+    if (dma){
+        return -1; //DMA not supported yet
+    } else {
+        if (direction == 0) { // Read
+            for (int i = 0; i < numsects; i++) {
+                if ((err = ide_polling(channel, 1)))
+                    return err;
+                __asm__ volatile("pushw %ds");
+                __asm__ volatile("mov %%ax, %%ds": : "a" (selector));
+                __asm__ volatile("rep insw": : "c" (words), "d" (bus), "D" (edi));
+                __asm__ volatile("popw %ds");
+                edi += words * 2;
+            }
+        } else { // write
+            for (int i = 0; i < numsects; i++) {
+                if ((err = ide_polling(channel, 0)))
+                    return err;
+                __asm__ volatile("pushw %ds");
+                __asm__ volatile("mov %%ax, %%ds": : "a" (selector));
+                __asm__ volatile("rep outsw": : "c" (words), "d" (bus), "S" (edi));
+                __asm__ volatile("popw %ds");
+                edi += words * 2;
+            }
+            ide_write(channel, ATA_REG_COMMAND, (char []) {   ATA_CMD_CACHE_FLUSH,
+                        ATA_CMD_CACHE_FLUSH,
+                        ATA_CMD_CACHE_FLUSH_EXT}[lba_mode]);
+            ide_polling(channel, 0); // Polling.
+        }
+
+    }
+    return 0;
+}
+
+// Initialize the IDE controllers and detect connected drives
+// @param BAR0 Base Address Register 0
+// @param BAR1 Base Address Register 1
+// @param BAR2 Base Address Register 2
+// @param BAR3 Base Address Register 3
+// @param BAR4 Base Address Register 4
 void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4) {
     int i,j, k, count = 0;
     char int_buf[10];
@@ -225,6 +354,56 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, 
             terminal_writestring((char*)ide_devices[i].Model);
             terminal_writestring("\n");
         }
+    }
+}
+// Read sectors from the specified drive
+// @param drive Drive number (0-3)
+// @param lba Logical Block Addressing sector number
+// @param numsects Number of sectors to read
+// @param selector Code segment selector
+// @param edi Destination address to store the read data
+// @return 0 on success, error code on failure
+uint8_t ide_read_sectors(uint8_t drive, uint32_t lba, uint8_t numsects, uint16_t es, uint32_t edi) {
+    if (drive == 0) { // protect primary master (usually system disk)
+        return 4;
+    }
+    if (drive > 3 || ide_devices[drive].Reserved == 0)
+        return 1;
+    else if (((lba + numsects) > ide_devices[drive].Size) && ide_devices[drive].Type == IDE_ATA)
+        return 2;
+    else {
+        uint8_t err = 0;
+        if (ide_devices[drive].Type == IDE_ATA){
+            err = ide_ata_access(ATA_READ, drive, lba, numsects, es, edi);
+        } else if (ide_devices[drive].Type == IDE_ATAPI){
+            return 3; //ATAPI not supported yet
+        }
+        return err;
+    }
+}
+// Write sectors to the specified drive
+// @param drive Drive number (0-3)
+// @param lba Logical Block Addressing sector number
+// @param numsects Number of sectors to write
+// @param selector Code segment selector
+// @param edi Source address of the data to write
+// @return 0 on success, error code on failure
+uint8_t ide_write_sectors(uint8_t drive, uint32_t lba, uint8_t numsects, uint16_t es, uint32_t edi) {
+    if (drive == 0) { // protect primary master (usually system disk)
+        return 4;
+    }
+    if (drive > 3 || ide_devices[drive].Reserved == 0)
+        return 1;
+    else if (((lba + numsects) > ide_devices[drive].Size) && ide_devices[drive].Type == IDE_ATA)
+        return 2;
+    else {
+        uint8_t err = 0;
+        if (ide_devices[drive].Type == IDE_ATA){
+            err = ide_ata_access(ATA_WRITE, drive, lba, numsects, es, edi);
+        } else if (ide_devices[drive].Type == IDE_ATAPI){
+            return 3; //ATAPI not supported yet
+        }
+        return err;
     }
 }
 

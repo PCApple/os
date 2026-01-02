@@ -1,0 +1,32 @@
+1. cd ./src
+2. dd if=/dev/zero of=os.img bs=1048576 count=128
+3. fdisk os.img
+    a. n
+        i. p
+        ii. 1
+        iii.(enter)
+        iv. (enter)
+    b. a 
+        i. 1
+    c. w
+4. sudo losetup -f os.img
+5. sudo losetup -f os.img -o 1048576
+6. lsblk
+    Find the devloops for os and its offset (should be next to eachother and be like 128 and 127 MB), i will use /dev/loop0 for 128 and /dev/loop1 for 127, but you will need to plug in yours
+7. sudo mkdir /mnt/casos
+8. sudo mount /dev/loop1 /mnt/casos
+9. sudo mkdir /mnt/casos/boot
+10. sudo grub-install --target=i386-pc --root-directory=/mnt/casos --modules="normal part_msdos ext2 multiboot biosdisk" --recheck /dev/loop0
+11. cd /mnt/casos/boot/grub
+12. nano grub.cfg
+    in config, add this:
+    menuentry "CASOS" {
+        multiboot /boot/casos
+        boot
+    }
+13. cd ./src
+from here, you only need to run:
+./build to build the os and copy it to the disk
+./run to run the os
+
+    

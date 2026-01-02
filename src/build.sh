@@ -5,6 +5,6 @@ make casos
 echo "built casos"
 ./dumpall.sh clean
 ./dumpall.sh disassemble
-sudo cp casos /mnt/os2/boot
+sudo cp casos /mnt/casos/boot
 echo "copied casos"
 sync

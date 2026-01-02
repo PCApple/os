@@ -111,9 +111,6 @@ typedef struct ide_device {
 }ide_device_t;
 
 void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4);
-uint8_t ide_read(uint8_t channel, uint8_t reg);
-void ide_write(uint8_t channel, uint8_t reg, uint8_t data);
-void ide_read_buffer(uint8_t channel, uint8_t reg, uint32_t buffer, uint32_t quads);
-uint8_t ide_polling(uint8_t channel, uint32_t advanced_check);
-uint8_t ide_print_error(uint32_t drive, uint8_t err);
+uint8_t ide_read_sectors(uint8_t drive, uint32_t lba, uint8_t numsects, uint16_t es, uint32_t edi);
+uint8_t ide_write_sectors(uint8_t drive, uint32_t lba, uint8_t numsects, uint16_t es, uint32_t edi);
 
