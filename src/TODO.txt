@@ -2,13 +2,14 @@ DONE:
 revamp kalloc/kfree to take size
     also now does variable memory initialization
 Next goal:
-
-TSS setup
-Near term goals:
-disk permenence
+disk permanence
     need disk driver
+
+Near term goals:
+move in mem disk to dunamic allocation
 Bug fix scheduler
     weird skip of time, maybe have a dynamic timer
+
 Mid term goals:
 user mode
 FIFO scheduling mode
@@ -24,10 +25,14 @@ syscalls
     wait
 virtual memory(big one)
 pages dont need to be contigously allocated(this might be hard)
+
 FAR off goals:
 shell
 
 very far off:
 multiple cores
 64 bit
+
+When i feel like it:
+proper readme and installation guide
 

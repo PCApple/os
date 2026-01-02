@@ -18,13 +18,13 @@ void ide_write(uint8_t channel, uint8_t reg, uint8_t data) {
     if (reg > 0x07 && reg < 0x0C)
         ide_write(channel, ATA_REG_CONTROL, 0x80 | channels[channel].nIEN);
     if (reg < 0x08)
-        outb(channels[channel].base  + reg - 0x00, data);
+        outb(data,channels[channel].base  + reg - 0x00);
     else if (reg < 0x0C)
-        outb(channels[channel].base  + reg - 0x06, data);
+        outb(data,channels[channel].base  + reg - 0x06);
     else if (reg < 0x0E)
-        outb(channels[channel].ctrl  + reg - 0x0A, data);
+        outb(data, channels[channel].ctrl  + reg - 0x0A);
     else if (reg < 0x16)
-        outb(channels[channel].bmide + reg - 0x0E, data);
+        outb(data, channels[channel].bmide + reg - 0x0E);
     if (reg > 0x07 && reg < 0x0C)
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
 }
@@ -135,7 +135,9 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, 
     channels[ATA_SECONDARY].bmide = (BAR4 & 0xFFFFFFFC) + 8; // Bus Master IDE
     // 2- Disable IRQs:
     ide_write(ATA_PRIMARY, ATA_REG_CONTROL, 2);
+    ide_400ns(ATA_PRIMARY);
     ide_write(ATA_SECONDARY, ATA_REG_CONTROL, 2);
+    ide_400ns(ATA_SECONDARY);
     // 3- Detect ATA-ATAPI Devices:
     for (i = 0; i < 2; i++)
         for (j = 0; j < 2; j++) {
@@ -146,16 +148,12 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, 
             // (I) Select Drive:
             ide_write(i, ATA_REG_HDDEVSEL, 0xA0 | (j << 4)); // Select Drive.
             ide_400ns(i);
-            ide_400ns(i);
-            ide_400ns(i);
+
             
 
             // (II) Send ATA Identify Command:
             ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
-            ide_400ns(i);
-            ide_400ns(i);
-            ide_400ns(i); //1.2ms
-                    // it is based on System Timer Device Driver.
+            // it is based on System Timer Device Driver.
 
             // (III) Polling:
             if (ide_read(i, ATA_REG_STATUS) == 0) continue; // If Status = 0, No Device.
@@ -184,12 +182,10 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, 
 
                 ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
                 ide_400ns(i);
-                ide_400ns(i);
-                ide_400ns(i);
             }
 
             // (V) Read Identification Space of the Device:
-            ide_read_buffer(i, ATA_REG_DATA, (unsigned int) ide_buf, 128);
+            ide_read_buffer(i, ATA_REG_DATA, (uint32_t) ide_buf, 128);
 
             // (VI) Read Device Parameters:
             ide_devices[count].Reserved     = 1;

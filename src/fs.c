@@ -32,7 +32,7 @@ void* allocate_block(){
                 }
             }
         }
-    }
+    } 
     return NULL; // no free block found
 }
 int deallocate_block(void* block_addr) {

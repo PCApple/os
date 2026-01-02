@@ -7,6 +7,7 @@
 #include "mem.h"
 #include "pic.h"
 #include "print.h"
+#include "utils.h"
 
 
 #define IDLE_PRIO 0xFFFFFFFE

@@ -4,9 +4,7 @@
 #include "include/pic.h"
 #include "include/scheduler.h"
 #include "include/thread.h"
-#include "include/test_funcs.h"
 #include "include/int.h"
-#include "include/pit.h"
 #include "include/gdt.h"
 #include "include/fs.h"
 #include "include/ide.h"
@@ -29,10 +27,11 @@ void init(unsigned int magic_num, multiboot_info_t* binfo) {
     return;
   }
   printk("Memory initialization succeeded: total pages = %d\n", mem_ret);
-  PIC_init();
-  printk("PIC initialized\n");
-  idt_init();
-  printk("IDT initialized\n");
+  ide_initialize(0x1F0, 0x3F6, 0x170, 0x376, 0x0);
+  //PIC_init();
+  //printk("PIC initialized\n");
+  //idt_init();
+  //printk("IDT initialized\n");
   
 
   void* fs_mem = &fs_buf;
