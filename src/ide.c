@@ -1,5 +1,4 @@
 #include "include/ide.h"
-#include "include/types.h"
 
 channel_t channels[2]; // 0: primary channel, 1: secondary channel
 ide_device_t ide_devices[4]; // 0: primary master, 1: primary slave, 2: secondary master, 3: secondary slave

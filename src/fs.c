@@ -1,150 +1,568 @@
 #include "include/fs.h"
 
 
-static void* fs_ptr; // pointer to the start of the filesystem in memory
-
 static fd_table_t fd_table[MAX_NUM_THREADS]; // global file descriptor table
+cache_t* inode_cache;
+cache_t* data_block_cache;
+cache_t* superblock_cache;
+cache_t* bitmap_cache; // all the caches, might be a lot
+
 
 
 // -------------------------------- internal helper functions --------------------------------//
+// reads in one block of memory from disk using ATA IDE
+// @param index the index
+int fs_read_block_from_disk(uint32_t index, void* buffer) {
+    char* sect_buffer = mem_kalloc(SECTOR_SIZE);
+    int err = 0;
+    if (sect_buffer == NULL) {
+        return -1;
+    }
+    uint32_t block_addr = index * BLOCK_SIZE;
+    uint8_t isLowBlock = 0;
+    if (block_addr %512 == 0) {
+        isLowBlock = 1;
+    }
+    err = ide_read_sectors(DRIVE_NUM, block_addr, 1, DS, (uint32_t) sect_buffer);
+    if (err != 0) {
+        mem_kfree(sect_buffer);
+        return -1;
+    }
+    if (isLowBlock) {
+        err = memcpy(buffer, sect_buffer, BLOCK_SIZE);   
+        if (err != 0) {
+            mem_kfree(sect_buffer);
+            return -1;
+        }
 
+    } else {
+        err  = memcpy(buffer, sect_buffer+BLOCK_SIZE, BLOCK_SIZE);
+        if (err != 0) {
+            mem_kfree(sect_buffer);
+            return -1;
+        }
+    }
+    mem_kfree(sect_buffer);
+    return 0;
+}
+// writes block(256 bytes) to disk using ATA IDE
+// @param index the block index to write to
+// @param buffer the buffer to write
+// @return 0 on success, else fail
+int fs_write_block_to_disk(uint32_t index, void*buffer) {
+    char* sect_buffer = mem_kalloc(SECTOR_SIZE);
+    int err = 0;
+    uint32_t block_addr = index * BLOCK_SIZE;
+    uint8_t isLowBlock = 0;
+    if (block_addr %SECTOR_SIZE == 0) {
+        isLowBlock = 1;
+    }
+    err = ide_read_sectors(DRIVE_NUM, block_addr, 1, DS, (uint32_t) sect_buffer);
+    if (err != 0) {
+        mem_kfree(sect_buffer);
+        return -1;
+    }
+    if (isLowBlock) {
+        err = memcpy(sect_buffer, buffer, BLOCK_SIZE);   
+        if (err != 0) {
+            mem_kfree(sect_buffer);
+            return -1;
+        }
+
+    } else {
+        err  = memcpy(sect_buffer+BLOCK_SIZE, buffer, BLOCK_SIZE);
+        if (err != 0) {
+            mem_kfree(sect_buffer);
+            return -1;
+        }
+    }
+    err = ide_write_sectors(DRIVE_NUM, block_addr, 1, DS, (uint32_t) sect_buffer);
+    mem_kfree(sect_buffer);
+    if (err != 0) {  
+        return -1;
+    }
+    return 0;
+}
+// this will first look for the block in the cache, if not found will read from disk and store in cache
+// @param block_idx index of the block to read
+// @param buffer pointer to store the read block, this should not be allocated beforehand
+// @return 0 on success, -1 on failure
+
+int fs_get_and_lock_block(int block_idx, void* buffer){
+    if (block_idx < 0) {
+        return -1;
+    }
+    else if (block_idx == 0) { // super block
+        superblock_cache_t* sb_cache_entry = (superblock_cache_t*)superblock_cache->cache;
+        if (sb_cache_entry->refcnt > MAX_REFS) {
+            return -1; // already locked
+        }
+        buffer = &((superblock_cache_t*)(superblock_cache->cache))->superblock;
+        sb_cache_entry->refcnt++;
+        return 0;
+    }
+    else if (block_idx <= INODE_BLOCKS) { // reading inode blocks
+        // look for in cache first
+        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
+            inode_cache_entry_t* cache_entry = &((inode_cache_entry_t*)inode_cache->cache)[i];
+            if (cache_entry->used && cache_entry->inode_index == block_idx) {
+                if (cache_entry->refcnt > MAX_REFS) {
+                    return -1; // already locked
+                }
+                buffer = &cache_entry->inode;
+                cache_entry->refcnt++;
+                return 0;
+            }
+        }
+        // not found in cache, load into next available cache entry
+        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
+            int next_idx = (inode_cache->next_ptr + i) % INODE_CACHE_SIZE;
+            inode_cache_entry_t* next_entry = &((inode_cache_entry_t*)inode_cache->cache)[next_idx];
+            if (next_entry->refcnt > MAX_REFS) {
+                continue;
+            }
+            if (next_entry->dirty && next_entry->used) {
+                uint32_t dirty_idx = next_entry->inode_index;
+                void* inode = &next_entry->inode;
+                fs_write_block_to_disk(dirty_idx, inode);
+                next_entry->dirty = 0;
+            }
+            next_entry->used = 1;
+            next_entry->inode_index = block_idx;
+            next_entry->refcnt = 1;
+            fs_read_block_from_disk(block_idx, &next_entry->inode);
+            buffer = &next_entry->inode;
+            inode_cache->next_ptr = next_idx + 1;     
+            return 0;
+        }
+        return -1; // cache full for some reason
+        
+    } else if (block_idx <= INODE_BLOCKS + BITMAP_BLOCKS) {
+        block_bitmap_cache_entry_t* bb_cache_entry = (block_bitmap_cache_entry_t*)bitmap_cache->cache;
+        if (bb_cache_entry->refcnt > MAX_REFS) {
+            return -1; // already locked
+        }
+        bb_cache_entry->refcnt++;
+        int bitmap_idx = block_idx - 1 - INODE_BLOCKS; // should be 0-3
+        buffer = (void*)((char*)(bb_cache_entry->block_bitmap.bitmap) + bitmap_idx*BLOCK_SIZE);
+        return 0;                
+    } else { // data block
+        for (int i = 0; i < DATA_BLOCK_CACHE_SIZE; i++) {
+            data_block_cache_entry_t* cache_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[i];
+            if (cache_entry->used && cache_entry->block_num == block_idx) {
+                buffer = &cache_entry->data;
+                cache_entry->refcnt++;
+                return 0;
+            }
+        }
+        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
+            int next_idx = (data_block_cache->next_ptr + i) % DATA_BLOCK_CACHE_SIZE;
+            data_block_cache_entry_t* next_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[next_idx];
+            if (next_entry->refcnt > MAX_REFS) {
+                continue;
+            }
+            if (next_entry->dirty && next_entry->used) {
+                uint32_t dirty_idx = next_entry->block_num;
+                void* data = &next_entry->data;
+                fs_write_block_to_disk(dirty_idx, data);
+                next_entry->dirty = 0;
+            }
+            next_entry->used = 1;
+            next_entry->block_num = block_idx;
+            fs_read_block_from_disk(block_idx, &next_entry->data);
+            next_entry->refcnt = 1;
+            buffer = &next_entry->data;
+            data_block_cache->next_ptr = next_idx + 1;
+            return 0;
+        }
+        return -1; // cache full for some reason
+    }
+}
+// frees the block from cache and decrements refcnt, this is the way to mark a block as "dirty" and ready to be written back to disk
+// @param block_idx index of the block to free
+// @param is_modified 1 if the block has been modified and needs to be written back to disk, 0 otherwise
+// @return 0 on success, -1 on failure
+int fs_release_block(int block_idx, int is_modified) {
+    if (block_idx < 0) {
+        return -1;
+    }
+    else if (block_idx == 0) { // super block
+        superblock_cache_t* sb_cache_entry = (superblock_cache_t*)superblock_cache->cache;
+        if (sb_cache_entry->refcnt == 0) {
+            return -1; // not locked
+        }
+        if (is_modified) {
+            sb_cache_entry->dirty = 1; // mark dirty on release
+        }
+        sb_cache_entry->refcnt--;
+        return 0;
+    }
+    else if (block_idx <= INODE_BLOCKS) { // inode block
+        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
+            inode_cache_entry_t* cache_entry = &((inode_cache_entry_t*)inode_cache->cache)[i];
+            if (cache_entry->used && cache_entry->inode_index == block_idx) {
+                if (cache_entry->refcnt == 0) {
+                    return -1; // not locked
+                }
+                if (is_modified) {
+                    cache_entry->dirty = 1; // mark dirty on release
+                }
+                cache_entry->refcnt--;
+                return 0;
+            }
+        }
+        return -1; // not found in cache
+    } else if (block_idx <= INODE_BLOCKS + BITMAP_BLOCKS) {
+        block_bitmap_cache_entry_t* bb_cache_entry = (block_bitmap_cache_entry_t*)bitmap_cache->cache;
+        if (bb_cache_entry->refcnt == 0) {
+            return -1; // not locked
+        }
+        if (is_modified) {
+            bb_cache_entry->dirty = 1; // mark dirty on release
+        }
+        bb_cache_entry->refcnt--;
+        return 0;                
+    } else { // data block
+        for (int i = 0; i < DATA_BLOCK_CACHE_SIZE; i++) {
+            data_block_cache_entry_t* cache_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[i];
+            if (cache_entry->used && cache_entry->block_num == block_idx) {
+                if (cache_entry->refcnt == 0) {
+                    return -1; // not locked
+                }
+                if (is_modified) {
+                    cache_entry->dirty = 1; // mark dirty on release
+                }
+                cache_entry->refcnt--;
+                return 0;
+            }
+        }
+        return -1; // not found in cache
+    }        
+}
+// flushes all memory changes to disk
+// @return 0 on success, else fail
+int fs_flush() {
+    //flush superblock
+    superblock_cache_t* sb_cache_entry = (superblock_cache_t*)superblock_cache->cache;
+    if (sb_cache_entry->dirty && sb_cache_entry->refcnt == 0) {
+        fs_write_block_to_disk(0, &sb_cache_entry->superblock);
+        sb_cache_entry->dirty = 0;
+    }
+    //flush inode cache
+    for (int i = 0; i < INODE_CACHE_SIZE; i++) {
+        inode_cache_entry_t* cache_entry = &((inode_cache_entry_t*)inode_cache->cache)[i];
+        if (cache_entry->dirty && cache_entry->refcnt == 0) {
+            fs_write_block_to_disk(cache_entry->inode_index, &cache_entry->inode);
+            cache_entry->dirty = 0;
+        }
+    }
+    //flush bitmap cache
+    block_bitmap_cache_entry_t* bb_cache_entry = (block_bitmap_cache_entry_t*)bitmap_cache->cache;
+    if (bb_cache_entry->dirty && bb_cache_entry->refcnt == 0) {
+        for (int i = 0; i < BITMAP_BLOCKS; i++) {
+            fs_write_block_to_disk(1 + INODE_BLOCKS + i, (void*)((char*)(bb_cache_entry->block_bitmap.bitmap) + i*BLOCK_SIZE));
+        }
+        bb_cache_entry->dirty = 0;
+    }
+    //flush data block cache
+    for (int i = 0; i < DATA_BLOCK_CACHE_SIZE; i++) {
+        data_block_cache_entry_t* cache_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[i];
+        if (cache_entry->dirty && cache_entry->refcnt == 0) {
+            fs_write_block_to_disk(cache_entry->block_num, &cache_entry->data);
+            cache_entry->dirty = 0;
+        }
+    }
+    return 0;
+}
+// reads the inode at inode_idx into inode_result, WILL LEAVE THE BLOCK LOCKED, you need to call fs_release_block after you are done with the inode
+// @param inode_idx index of the inode to read
+// @param inode_result pointer to store the read inode
+// @param superblock_ptr pointer to the superblock, can be left NULL if superblock is not already read, but it is currently used then you will need to provide it
+// @return 0 on success, -1 on failure
+int fs_get_inode(int inode_idx, inode_t* inode_result, void* superblock_ptr) {
+    superblock_t* sb;
+    if (superblock_ptr == NULL) {
+        if (fs_get_and_lock_block(0, sb)) {
+            return -1;
+        }
+    } else {
+        sb = (superblock_t*)superblock_ptr;
+    }
+    if (inode_idx < 0 || inode_idx >= MAX_INODES) {
+        if (superblock_ptr == NULL) {
+            fs_release_block(0, 0);
+        }
+        return -1;
+    }
+    inode_t* inode_block;
+    int block_idx = 1 + (inode_idx / INODES_PER_BLOCK);
+    if (fs_get_and_lock_block(block_idx, inode_block)) {
+        if (superblock_ptr == NULL) {
+            fs_release_block(0, 0);
+        }
+        return -1;
+    }
+    int inode_offset = inode_idx % INODES_PER_BLOCK;
+    *inode_result = inode_block[inode_offset];
+    return 0;
+}
 /*
-    returns a pointer to the a free data block and marks it as used in the block bitmap and decrements n_free_blocks in the superblock
-    returns NULL if no free block is available
+    returns the index of a free data block and marks it as used in the block bitmap and decrements n_free_blocks in the superblock
+    returns 0 if no free block is available
 */
 
-void* allocate_block(){
-    if (((superblock_t*)fs_ptr)->n_free_blocks <= 0) {
-        return NULL; // no free blocks
+uint32_t fs_allocate_block(){
+    superblock_t* sb;
+    if (fs_get_and_lock_block(0, sb)){
+        return 0;
     }
-    block_bitmap_t* bb = (block_bitmap_t*)((uint8_t*)fs_ptr + BLOCK_SIZE + INODE_BLOCKS * BLOCK_SIZE);
-    superblock_t* sb = (superblock_t*)fs_ptr;
-    for (uint32_t byte_idx = 0; byte_idx < sizeof(bb->bitmap); byte_idx++) {
-        if (bb->bitmap[byte_idx] != 0xFF) {
-            for (uint8_t bit_idx = 0; bit_idx < 8; bit_idx++) {
-                if (!(bb->bitmap[byte_idx] & (1 << bit_idx))) {
-                    bb->bitmap[byte_idx] |= (1 << bit_idx); // mark it as used
-                    uint32_t block_num = byte_idx * 8 + bit_idx;
+    if (sb->n_free_blocks == 0) {
+        return 0; // no free blocks
+    }
+    char* bb;
+    
+    uint32_t total_data_blocks_checked = 0; 
+    for (int i = 0; i < BITMAP_BLOCKS; i++) {
+        int bb_block_idx = 1 + INODE_BLOCKS + i;
+
+        if(fs_get_and_lock_block(bb_block_idx, bb)){
+            fs_release_block(0, 0);
+            return 0;
+        }
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            if (total_data_blocks_checked > DATA_BLOCKS) {
+                return 0; // no free blocks
+            }
+            total_data_blocks_checked++;
+            for (int k = 0; k < 8; k++) {
+                if ((bb[j] & (1 << k)) == 0){
+                    bb[j] |= (1 << k); // mark it as used
+                    uint32_t block_num = i * BLOCK_SIZE * 8 + j * 8 + k;
+                    fs_release_block(bb_block_idx, 1);
                     sb->n_free_blocks--;
-                    char* block_addr = (char*)fs_ptr + BLOCK_SIZE + INODE_BLOCKS * BLOCK_SIZE + BLOCK_BITMAP_BLOCKS * BLOCK_SIZE + block_num * BLOCK_SIZE;
-                    memset(block_addr, 0, BLOCK_SIZE); // zero out the block
-                    return (void*)  block_addr;
+                    fs_release_block(0, 1);
+                    int block_idx = 1 + INODE_BLOCKS + BITMAP_BLOCKS + block_num; // calculate block index
+                    return block_idx;                 
                 }
             }
         }
-    } 
-    return NULL; // no free block found
+        fs_release_block(bb_block_idx, 0);  
+    }
+    fs_release_block(0, 0);
+    return 0; // no free block found
 }
-int deallocate_block(void* block_addr) {
-    superblock_t* sb = (superblock_t*)fs_ptr;
-    block_bitmap_t* bb = sb->block_bitmap_start;
-    uint32_t block_num = (block_addr - sb->data_blocks_start) / BLOCK_SIZE;
-    uint32_t byte_idx = block_num / 8;
+// deallocates the block at the index passed in, does not clear mem
+// @param block_idx the block index of the block to free
+// 0 on success, else fail
+int fs_deallocate_block(int block_idx) {
+    superblock_t* sb;
+    if (fs_get_and_lock_block(0, sb)) {
+        return -1;
+    }
+    char* bb;
+    
+    uint32_t block_num = block_idx - sb->data_blocks_index;
+    uint32 block_part_num = block_num / (DATA_BLOCKS / BITMAP_BLOCKS);
+    if(fs_get_and_lock_block(1 + INODE_BLOCKS + block_part_num, bb)) {
+        fs_release_block(0, 0);
+        return -1;
+    }
+    uint32_t byte_idx = (block_num - block_part_num * (DATA_BLOCKS / BITMAP_BLOCKS)) / 8;
     uint8_t bit_idx = block_num % 8;
-    uint8_t bits = bb->bitmap[byte_idx];
+    uint8_t bits = bb[byte_idx];
     if (bits & (1 << bit_idx)) {
-        bb->bitmap[byte_idx] &= ~(1 << bit_idx); // mark it as free
+        bb[byte_idx] &= ~(1 << bit_idx); // mark it as free
         sb->n_free_blocks++;
-        memset(block_addr, 0, BLOCK_SIZE);
+        fs_release_block(sb->bb_index + block_part_num, 1);
+        fs_release_block(0, 1);
         return 0;
     } else {
+        fs_release_block(sb->bb_index + block_part_num, 0);
+        fs_release_block(0, 0);
         return -1; // block was already free
     }
 }
-dir_entry_t* find_dir_entry(inode_t* dir_inode, const char* filename) {
+// finds the directory entry in a directory
+// @param dir_inode the inode of the directory to be checked
+// @param the filename of the file/directory to look for
+// @param space to store the directory entry
+// @return 0 on success, else fail
+int fs_find_dir_entry(inode_t* dir_inode, const char* filename, dir_entry_t* result_entry) {
+    if (dir_inode == NULL || filename == NULL) {
+        return -1;
+    }
     if (dir_inode->type != FILE_TYPE_DIRECTORY) {
-        return NULL; // not a directory
+        return -1; // not a directory
     }
     // check direct pointers
     for (int i = 0; i < N_DIRECT_POINTERS; i++) {
-        if (dir_inode->location.direct_pointers[i] == NULL) {
-            return NULL; // no data blocks
+        if (dir_inode->location.direct_pointers[i] == 0) {
+            return -1; // no data blocks
         }
-        dir_entry_t* entries = (dir_entry_t*)dir_inode->location.direct_pointers[i]; // assuming single block for simplicity
+        dir_entry_t* entries;
+        if (fs_get_and_lock_block(dir_inode->location.direct_pointers[i], (void*)entries)) {
+            return -1;
+        }
         uint32_t entry_idx = 0;
-        while (entries[entry_idx].filename[0] != '\0') {
+        while (entries[entry_idx].filename[0] != '\0' || entry_idx < ENTRIES_PER_DIR_BLOCK) {
             if (strcmp(entries[entry_idx].filename, filename) == 0) {
-                return &entries[entry_idx];
+                strcpy(result_entry->filename, entries[entry_idx].filename);
+                result_entry->inode_index = entries[entry_idx].inode_index;
+                fs_release_block(dir_inode->location.direct_pointers[i], 0);
+                return 0;
             }
             entry_idx++;
         }
-    
+        fs_release_block(dir_inode->location.direct_pointers[i], 0);
     }
     // check indirect pointers
     for (int i = 0; i < N_INDIRECT_POINTERS; i++) {
         if (dir_inode->location.indirect_pointer[i] == NULL) {
-            return NULL; // no indirect blocks
+            return -1; // no indirect blocks
         }
-        void** indirect_block = (void**)dir_inode->location.indirect_pointer[i];
+        uint32_t* indirect_block;
+        if (fs_get_and_lock_block((uint32_t)dir_inode->location.indirect_pointer[i], (void*)indirect_block)) {
+            return -1;
+        }
         for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
-            if (indirect_block[j] == NULL) {
-                return NULL; // no data blocks
+            if (indirect_block[j] == 0) {
+                return -1; // no data blocks
             }
-            dir_entry_t* entries = (dir_entry_t*)indirect_block[j];
+            dir_entry_t* entries;
+            if (fs_get_and_lock_block((uint32_t)indirect_block[j], (void*)entries)) {
+                return -1;
+            }
             uint32_t entry_idx = 0;
             while (entries[entry_idx].filename[0] != '\0' || entry_idx < ENTRIES_PER_DIR_BLOCK) {
                 if (strcmp(entries[entry_idx].filename, filename) == 0) {
-                    return &entries[entry_idx];
+                    strcpy(result_entry->filename, entries[entry_idx].filename);
+                    result_entry->inode_index = entries[entry_idx].inode_index;
+                    fs_release_block(indirect_block[j], 0); //dir block
+                    fs_release_block(dir_inode->location.indirect_pointer[i], 0); // indirect block
+                    return 0;
                 }
                 entry_idx++;
             }
+            fs_release_block(indirect_block[j], 0); // dir block
         }
+        fs_release_block(dir_inode->location.indirect_pointer[i], 0); // indirect block
     }
     // check double indirect pointers
     for (int i = 0; i < N_DOUBLE_INDIRECT_POINTERS; i++) {
         if (dir_inode->location.double_indirect_pointer[i] == NULL) {
-            return NULL; // no double indirect blocks
+            return -1; // no double indirect blocks
         }
-        void*** double_indirect_block = (void***)dir_inode->location.double_indirect_pointer[i];
+        void* double_indirect_block_buffer;
+        if (fs_get_and_lock_block((uint32_t)dir_inode->location.double_indirect_pointer[i], double_indirect_block_buffer)) {
+            return -1;
+        }
+        uint32_t* double_indirect_block = (uint32_t*)double_indirect_block_buffer;
         for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
-            if (double_indirect_block[j] == NULL) {
-                return NULL; // no indirect blocks
+            if (double_indirect_block[j] == 0) {
+                fs_release_block(dir_inode->location.double_indirect_pointer[i], 0);
+                return -1; // no indirect blocks
             }
-            void** indirect_block = (void**)double_indirect_block[j];
+            uint32_t* indirect_block;
+            if (fs_get_and_lock_block((uint32_t)double_indirect_block[j], (void*)indirect_block)) {
+                fs_release_block((uint32_t)dir_inode->location.double_indirect_pointer[i], 0);
+                return -1;
+            }
             for (int k = 0; k < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; k++) {
-                if (indirect_block[k] == NULL) {
-                    return NULL; // no data blocks
+                if (indirect_block[k] == 0) {
+                    return -1; // no data blocks
                 }
-                dir_entry_t* entries = (dir_entry_t*)indirect_block[k];
+                dir_entry_t* entries;
+                if (fs_get_and_lock_block((uint32_t)indirect_block[k], (void*)entries)) {
+                    fs_release_block((uint32_t)double_indirect_block[j], 0);
+                    fs_release_block(dir_inode->location.double_indirect_pointer[i], 0);
+                    return -1;
+                }
                 uint32_t entry_idx = 0;
                 while (entries[entry_idx].filename[0] != '\0' || entry_idx < ENTRIES_PER_DIR_BLOCK) {
                     if (strcmp(entries[entry_idx].filename, filename) == 0) {
-                        return &entries[entry_idx];
+                        strcpy(result_entry->filename, entries[entry_idx].filename);
+                        result_entry->inode_index = entries[entry_idx].inode_index;
+                        fs_release_block((uint32_t)indirect_block[k], 0); // dir block
+                        fs_release_block((uint32_t)double_indirect_block[j], 0); // indirect block
+                        fs_release_block(dir_inode->location.double_indirect_pointer[i], 0); // double indirect block
+                        return 0;
                     }
                     entry_idx++;
                 }
+                fs_release_block((uint32_t)indirect_block[k], 0); // dir block
             }
+            fs_release_block((uint32_t)double_indirect_block[j], 0); // indirect block
         }
+        fs_release_block(dir_inode->location.double_indirect_pointer[i], 0); // double indirect block
     }
-    return NULL; // not found
+    return -1; // not found
 }
+// will get parent directory and leave it locked, you need to call fs_release_block after you are done with the inode, NEEDS SB
+// @param path full path to the file/directory
+// @return pointer to the parent directory inode on success, NULL on failure
 inode_t* get_parent_dir_inode(const char* path){
-    superblock_t* sb = (superblock_t*)fs_ptr;
+    superblock_t* sb;
+    if (fs_get_and_lock_block(0, sb) != 0){
+        return NULL;
+    }
     uint32_t len = strlen(path);
     uint32_t path_idx = 1;
-    inode_t* curr_dir = &((inode_t*)(sb->inodes_start))[sb->root_inode_index];
+    inode_t* curr_dir;
+    uint32_t curr_inode_block_idx = 1 + (sb->inode_index / INODES_PER_BLOCK);
+    if (fs_get_inode(sb->inode_index, curr_dir, sb) != 0){
+        fs_release_block(0, 0);
+        return NULL;
+    }
+    uint32_t par_inode_block_idx = NULL;
     inode_t* parent_dir = NULL;
     while (path_idx < strlen(path)) {
         if (curr_dir->type != FILE_TYPE_DIRECTORY) {
+            if (parent_dir != NULL) {
+                fs_release_block(par_inode_block_idx, 0);
+            }
+            fs_release_block(curr_inode_block_idx, 0);
+            fs_release_block(0, 0);
             return NULL; // not a directory
         }
-        char name[MAX_FILENAME_LEN + 1];
+        char name[MAX_FILENAME_LEN + 1]; // name for the next file/directory to be read
         uint32_t name_idx = 0;
         while (path[path_idx] != '/' && path[path_idx] != '\0' && name_idx < MAX_FILENAME_LEN) {
             name[name_idx++] = path[path_idx++];
         }
-        if (path_idx == len || (path[path_idx] == '/' && path_idx + 1 == len)) {
-            return curr_dir; // reached the target file/directory
+        if (path_idx == len || (path[path_idx] == '/' && path_idx + 1 == len)) { // this is either the file(part 1) or the last directory(part 2)
+            return curr_dir; // reached the target file/directory (this is the parent)
         }
         name[name_idx] = '\0';
         // search for name in curr_dir
-        dir_entry_t* dir_entry = find_dir_entry(curr_dir, name);
+        dir_entry_t* dir_entry;
+        if (fs_find_dir_entry(curr_dir, name, dir_entry) != 0) {
+            if (parent_dir != NULL) {
+                fs_release_block(par_inode_block_idx, 0);
+            }
+            fs_release_block(curr_inode_block_idx, 0);
+            fs_release_block(0, 0);
+            return NULL; // entry not found
+        }
+        if (parent_dir != NULL) {
+            fs_release_block(par_inode_block_idx, 0);
+        }
         parent_dir = curr_dir;
-        curr_dir = &((inode_t*)(sb->inodes_start))[dir_entry->inode_index];
+        par_inode_block_idx = curr_inode_block_idx;
+        curr_inode_block_idx = 1 + (dir_entry->inode_index / INODES_PER_BLOCK);
+        if (fs_get_inode(dir_entry->inode_index, curr_dir, sb) != 0) {
+            if (parent_dir != NULL) {
+                fs_release_block(par_inode_block_idx, 0);
+            }
+            fs_release_block(0, 0);
+            return NULL;
+        }
         if (path[path_idx] == '/') {
-            path_idx++;
+            path_idx++; // skip the slash
         }
     }
+    fs_release_block(curr_inode_block_idx, 0);
+    fs_release_block(par_inode_block_idx, 0);
+    fs_release_block(0, 0);
     return NULL; // should not reach here probably
 }
 void read_filename(const char* path, char* filename) {
@@ -167,24 +585,79 @@ void read_filename(const char* path, char* filename) {
     }
     filename[cnt] = '\0';
 }
-
+// expands the file to be the required size, expects superblock to be free
+// @param inode the inode of the file that will be increased
+// @param new_size the new size of the file
+// @return 0 on success, -1 on failure
 int expand_file_size(inode_t* inode, uint32_t new_size) {
         if (new_size <= inode->size) {
             return 0; // no need to expand
         }
         if (new_size < 1) {
-            terminal_writestring("ERROR: File size is 0\n");
+            printk("ERROR: File size is 0\n");
             return -1;
         }
-        int remaining_blocks = ceiling(new_size, BLOCK_SIZE);
+        superblock_t* sb;
+        if (fs_get_and_lock_block(0, (void*)sb) != 0) {
+            printk("Error, superblock cannot be opened\n");
+            return -1;
+        }
+        uint32_t n_free_blocks = sb->n_free_blocks;
+        fs_release_block(0, 0);
+        uint32_t remaining_blocks = ceiling(new_size, BLOCK_SIZE);
+        
+        // really gross calc to see if there is enough space
+        uint32_t used_blocks = ceiling(inode->size, BLOCK_SIZE);
+        uint32_t required_blocks_to_allocate = 0;
+        uint32_t direct_ptr_cnt = N_DIRECT_POINTERS;
+        uint32_t indirect_ptr_cnt = N_INDIRECT_POINTERS;
+        uint32_t double_indirect_ptr_cnt = N_DOUBLE_INDIRECT_POINTERS;
+        uint32_t dir_per_indir_cnt = 0;
+        uint32_t indir_per_dindir_cnt = 0;
+        for(int i = 0; i < remaining_blocks; i++){
+            int cnt_to_remove = 0;
+            if (direct_ptr_cnt > 0) {
+                cnt_to_remove++;
+            } else if (indirect_ptr_cnt > 0){
+                if (direct_ptr_cnt % DIRECT_BLOCKS_PER_INDIRECT_BLOCK == 0){
+                    indirect_ptr_cnt--;
+                    cnt_to_remove++;
+                }
+                cnt_to_remove++;
+                dir_per_indir_cnt = (dir_per_indir_cnt+1)%DIRECT_BLOCKS_PER_INDIRECT_BLOCK;
+            } else if (double_indirect_ptr_cnt > 0){
+                if (indir_per_dindir_cnt%DIRECT_BLOCKS_PER_INDIRECT_BLOCK == 0){
+                    double_indirect_ptr_cnt--;
+                    cnt_to_remove++;
+                }
+                if (dir_per_indir_cnt % DIRECT_BLOCKS_PER_INDIRECT_BLOCK == 0){
+                    indir_per_dindir_cnt = (indir_per_dindir_cnt+ 1)%DIRECT_BLOCKS_PER_INDIRECT_BLOCK;
+                    cnt_to_remove++;                                        
+                }
+                dir_per_indir_cnt =(dir_per_indir_cnt+1)%DIRECT_BLOCKS_PER_INDIRECT_BLOCK;
+                cnt_to_remove++;
+            } else {
+                printk("Error: size exceeds capacity of inode\n");
+            }
+            if (used_blocks >= cnt_to_remove) {
+                used_blocks -= cnt_to_remove;
+            } else if (used_blocks == 0) {
+                required_blocks_to_allocate += cnt_to_remove;
+            } else {
+                uint32_t diff = cnt_to_remove - used_blocks;
+                used_blocks = 0;
+                required_blocks_to_allocate += diff;
+            }
+        }
+        // check if there is enough space
+        if (required_blocks_to_allocate > sb->n_free_blocks) {
+            printk("Error: file size will exceed the number of remaining freeblocks, needed blocks: %d, remaining free blocks: %d\n", remaining_blocks, sb->n_free_blocks);
+            return -1;
+        }
         for (int i = 0; i < N_DIRECT_POINTERS; i++) {
             if (inode->location.direct_pointers[i] == NULL) {
-                void* new_block = allocate_block();
-                if (new_block == NULL) {
-                    terminal_writestring("ERROR: Failed to allocate data block\n");
-                    return -1;
-                }
-                inode->location.direct_pointers[i] = new_block;
+                uint32_t new_block_idx = fs_allocate_block();
+                inode->location.direct_pointers[i] = new_block_idx;
             }
             remaining_blocks--;
             if (remaining_blocks == 0) {
@@ -192,82 +665,80 @@ int expand_file_size(inode_t* inode, uint32_t new_size) {
                 return 0;
             }
         }
-        if (remaining_blocks >0) { // doing one level of indirection
+        if (remaining_blocks > 0) { // doing one level of indirection
             // handle indirect pointers
             for (int i = 0; i < N_INDIRECT_POINTERS; i++) {
                 if (inode->location.indirect_pointer[i] == NULL) {
-                    inode->location.indirect_pointer[i] = allocate_block();
-                    if (inode->location.indirect_pointer[i] == NULL) {
-                        terminal_writestring("ERROR: Failed to allocate indirect block\n");
-                        return -1;
-                    }
+                    uint32_t indirect_block_idx = fs_allocate_block();
+                    inode->location.indirect_pointer[i] = indirect_block_idx;
                 }
-                void** indirect_block = (void**)inode->location.indirect_pointer[i];
+                uint32_t* indirect_block;
+                if (fs_get_and_lock_block((uint32_t)inode->location.indirect_pointer[i], (void*)indirect_block) != 0) {
+                    printk("ERROR: Failed to read indirect block %d\n", inode->location.indirect_pointer[i]);
+                    return -1;
+                }
                 for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
-                    if (indirect_block[j] == NULL) {
-                        void* new_block = allocate_block();
-                        if (new_block == NULL) {
-                            terminal_writestring("ERROR: Failed to allocate data block\n");
-                            return -1;
-                        }
-                        indirect_block[j] = new_block;
+                    if (indirect_block[j] == 0) {
+                        uint32_t new_block_idx = fs_allocate_block();
+                        indirect_block[j] = new_block_idx;
                     }
                     remaining_blocks--;
                     if (remaining_blocks == 0) {
                         inode->size = new_size; 
+                        fs_release_block(inode->location.indirect_pointer[i], 1);   
                         return 0;
                     }
-                }                
+                }   
+                fs_release_block(inode->location.indirect_pointer[i], 1);             
             }
         }
         if (remaining_blocks > 0) { // doing double indirection
             for (int i = 0; i < N_DOUBLE_INDIRECT_POINTERS; i++) {
                 if (inode->location.double_indirect_pointer[i] == NULL) {
-                    inode->location.double_indirect_pointer[i] = allocate_block();
-                    if (inode->location.double_indirect_pointer[i] == NULL) {
-                        terminal_writestring("ERROR: Failed to allocate double indirect block\n");
-                        return -1;
-                    }
+                    uint32_t double_indirect_block_idx = fs_allocate_block();
+                    inode->location.double_indirect_pointer[i] = double_indirect_block_idx;
                 }
-                void*** double_indirect_block = (void***)inode->location.double_indirect_pointer[i];
+                uint32_t* double_indirect_block;
+                if (fs_get_and_lock_block(inode->location.double_indirect_pointer[i], double_indirect_block) != 0){
+                    printk("Error: failed to read double indirect block %d\n", inode->location.double_indirect_pointer[i]);
+                }
                 for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
                     if (double_indirect_block[j] == NULL) {
-                        double_indirect_block[j] = allocate_block();
-                        if (double_indirect_block[j] == NULL) {
-                            terminal_writestring("ERROR: Failed to allocate indirect block\n");
-                            return -1;
-                        }
+                        double_indirect_block[j] = fs_allocate_block();
                     }
-                    void** indirect_block = (void**)double_indirect_block[j];
+                    uint32_t* indirect_block;
+                    if (fs_get_and_lock_block(double_indirect_block[j], indirect_block)){
+                        fs_release_block(inode->location.double_indirect_pointer[i], 1);
+                        printk("Error: Failed to read indirect %d from double block %d\n", double_indirect_block[j], inode->location.double_indirect_pointer[i]);
+                        return -1;
+                    }
                     for (int k = 0; k < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; k++) {
                         if (indirect_block[k] == NULL) {
-                            void* new_block = allocate_block();
-                            if (new_block == NULL) {
-                                terminal_writestring("ERROR: Failed to allocate data block\n");
-                                return -1;
-                            }
-                            indirect_block[k] = new_block;
+                            indirect_block[k] = fs_allocate_block();
                         }
                         remaining_blocks--;
                         if (remaining_blocks == 0) {
+                            fs_release_block(inode->location.double_indirect_pointer[i], 1);
+                            fs_release_block(double_indirect_block[j],1);
                             inode->size = new_size; 
                             return 0;
                         }
                     }
+                    fs_release_block(double_indirect_block[j],1);
                 }
+                fs_release_block(inode->location.double_indirect_pointer[i], 1);
             }
         }
         if (remaining_blocks > 0) {
-            terminal_writestring("ERROR: File size exceeds maximum limit\n");
+            printk("ERROR: File size exceeds maximum limit\n");
             return -1;
-        }
-            
+        }  
     return 0;
 }
 int create_or_mkdir(const char* path) {
-    superblock_t* sb = (superblock_t*)fs_ptr;
+    superblock_t* sb;
     if (path == NULL || path[0] != '/') {
-        terminal_writestring("ERROR: Invalid path\n");
+        printk("ERROR: Invalid path\n");
         return -1;
     }
     uint8_t is_dir = 0;
@@ -276,32 +747,45 @@ int create_or_mkdir(const char* path) {
     }
     inode_t* parent_dir = get_parent_dir_inode(path);
     if (parent_dir == NULL) {
-        terminal_writestring("ERROR: Parent directory does not exist\n");
+        printk("ERROR: Parent directory does not exist\n");
         return -1;
     }
     // check if file/dir already exists
     char name[MAX_FILENAME_LEN + 1];  
     read_filename(path, name);
-    dir_entry_t* dir_entry = find_dir_entry(parent_dir, name);
+    dir_entry_t* dir_entry;
+    if (fs_find_dir_entry(parent_dir, name, dir_entry)){
+        printk("Error: cannot find dir entry in parent");
+        fs_release_block(0, 0);
+    }
     if (dir_entry != NULL) {
-        terminal_writestring("ERROR: File/Directory already exists\n");
+        printk("ERROR: File/Directory already exists\n");
         return -2;
     }
-    // allocate new inode
-    inode_t* inodes = (inode_t*)sb->inodes_start;
-    uint32_t new_inode_idx = -1;
-    for (int i = 0; i < MAX_INODES; i++)
-    {
-        if (inodes[i].type == FILE_TYPE_UNUSED) {
-            new_inode_idx = i;
-            break;
-        }
-    }
-    if (new_inode_idx == -1) {
-        terminal_writestring("ERROR: No free inodes available\n");
+    
+    if (fs_get_and_lock_block(0, sb)){
+        printk("ERROR: cannot grab superblock\n");
         return -1;
     }
-    inode_t* new_inode = &inodes[new_inode_idx];
+    // allocate new inode
+    uint32_t new_inode_idx = -1; // block idx
+    inode_t* new_inode;
+    for (int i = 0; i < MAX_INODES; i++)
+    {
+
+        if(fs_get_inode(sb->inode_index + i, new_inode, sb)){
+            continue; // inode is used, skip
+        }
+        if (new_inode->type == FILE_TYPE_UNUSED) {
+            new_inode_idx = sb->inode_index + i;
+            break;
+        }
+        fs_release_block(sb->inode_index + i, 0);
+    }
+    if (new_inode_idx == -1) {
+        printk("ERROR: No free inodes available\n");
+        return -1;
+    }
     new_inode->idx = new_inode_idx;
     new_inode->type = is_dir ? FILE_TYPE_DIRECTORY : FILE_TYPE_FILE;
     new_inode->size = 0;
@@ -317,10 +801,21 @@ int create_or_mkdir(const char* path) {
         new_inode->location.double_indirect_pointer[j] = 0;
     }
     sb->n_free_inodes--;
+    fs_release_block(0, 1);
     if (is_dir) { // need to setup directory block
-        new_inode->location.direct_pointers[0] = allocate_block();
+        new_inode->location.direct_pointers[0] = fs_allocate_block();
         if (new_inode->location.direct_pointers[0] == NULL) {
-            terminal_writestring("ERROR: Failed to allocate block for new directory\n");
+            printk("ERROR: Failed to allocate block for new directory\n");
+            new_inode->idx = 0;
+            new_inode->type = FILE_TYPE_UNUSED;
+            new_inode->size = 0;
+            fs_release_block(new_inode_idx, 1);
+            if (fs_get_and_lock_block(0, sb)){
+                printk("MAJOR ERROR: super block is corrupted, need an additional free block\n");
+                return -1;
+            }
+            sb->n_free_inodes++;
+            fs_release_block(0, 1);
             return -1;
         }
         new_inode->size += sizeof(dir_entry_t);
@@ -332,13 +827,30 @@ int create_or_mkdir(const char* path) {
     //------------------------ find a blank entry in parent directory-------------------------//
     for (int i  = 0; i < N_DIRECT_POINTERS; i++) {
         if (parent_dir->location.direct_pointers[i] == NULL) {
-            parent_dir->location.direct_pointers[i] = allocate_block(); // allocate new block for directory entries
+            parent_dir->location.direct_pointers[i] = fs_allocate_block(); // allocate new block for directory entries
             if (parent_dir->location.direct_pointers[i] == NULL) {
-                terminal_writestring("ERROR: Failed to allocate block for parent directory entries\n");
+                printk("ERROR: Failed to allocate block for parent directory entries\n");
+                new_inode->idx = 0;
+                new_inode->type = FILE_TYPE_UNUSED;
+                new_inode->size = 0;
+                fs_deallocate_block(new_inode->location.direct_pointers[0]);
+                new_inode->location.direct_pointers[0] = 0;
+                fs_release_block(new_inode_idx, 1);
+                if (fs_get_and_lock_block(0, sb)){
+                    printk("MAJOR ERROR: super block is corrupted, need an additional free block\n");
+                    return -1;
+                }
+                sb->n_free_inodes++;
+                fs_release_block(0, 1);
                 return -1;
             }
         }
-        dir_entry_t* entries = (dir_entry_t*)parent_dir->location.direct_pointers[i];
+        dir_entry_t* entries;
+        if (fs_get_and_lock_block(parent_dir->location.direct_pointers[i], entries)){
+            printk("Error: block not accessible");
+
+            return -1;
+        }
         for (int j = 0; j < ENTRIES_PER_DIR_BLOCK; j++) {
             if (entries[j].filename[0] == '\0') {
                 // found a free entry
@@ -355,18 +867,18 @@ int create_or_mkdir(const char* path) {
     for (int i = 0; i < N_INDIRECT_POINTERS; i++)
     {
         if (parent_dir->location.indirect_pointer[i] == NULL) {
-            parent_dir->location.indirect_pointer[i] = allocate_block();
+            parent_dir->location.indirect_pointer[i] = fs_allocate_block();
             if (parent_dir->location.indirect_pointer[i] == NULL) {
-                terminal_writestring("ERROR: Failed to allocate indirect block for parent directory entries\n");
+                printk("ERROR: Failed to allocate indirect block for parent directory entries\n");
                 return -1;
             }
         }
         void** direct_blocks = (void**)parent_dir->location.indirect_pointer[i];
         for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
             if (direct_blocks[j] == NULL) {
-                direct_blocks[j] = allocate_block();
+                direct_blocks[j] = fs_allocate_block();
                 if (direct_blocks[j] == NULL) {
-                    terminal_writestring("ERROR: Failed to allocate block for parent directory entries\n");
+                    printk("ERROR: Failed to allocate block for parent directory entries\n");
                     return -1;
                 }
             }
@@ -387,27 +899,27 @@ int create_or_mkdir(const char* path) {
     // check double indirect pointers
     for (int i = 0; i < N_DOUBLE_INDIRECT_POINTERS; i++) {
         if (parent_dir->location.double_indirect_pointer[i] == NULL) {
-            parent_dir->location.double_indirect_pointer[i] = allocate_block();
+            parent_dir->location.double_indirect_pointer[i] = fs_allocate_block();
             if (parent_dir->location.double_indirect_pointer[i] == NULL) {
-                terminal_writestring("ERROR: Failed to allocate double indirect block for parent directory entries\n");
+                printk("ERROR: Failed to allocate double indirect block for parent directory entries\n");
                 return -1;
             }
         }
         void*** indirect_blocks = (void***)parent_dir->location.double_indirect_pointer[i];
         for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
             if (indirect_blocks[j] == NULL) {
-                indirect_blocks[j] = allocate_block();
+                indirect_blocks[j] = fs_allocate_block();
                 if (indirect_blocks[j] == NULL) {
-                    terminal_writestring("ERROR: Failed to allocate indirect block for parent directory entries\n");
+                    printk("ERROR: Failed to allocate indirect block for parent directory entries\n");
                     return -1;
                 }
             }
             void** direct_blocks = (void**)indirect_blocks[j];
             for (int k = 0; k < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; k++) {
                 if (direct_blocks[k] == NULL) {
-                    direct_blocks[k] = allocate_block();
+                    direct_blocks[k] = fs_allocate_block();
                     if (direct_blocks[k] == NULL) {
-                        terminal_writestring("ERROR: Failed to allocate block for parent directory entries\n");
+                        printk("ERROR: Failed to allocate block for parent directory entries\n");
                         return -1;
                     }
                 }
@@ -431,15 +943,31 @@ int create_or_mkdir(const char* path) {
 
 // -------------------------------- exposed functions --------------------------------//
 int fs_init(void* fs_start, uint32_t fs_size) {
-    // 
+    //
     __asm__ volatile ("cli");
     fs_ptr = fs_start;
     if (fs_start == NULL || fs_size != FS_SIZE) {
         __asm__ volatile ("sti");
         return -1;
     }
-
+    int err = ide_read_sectors(DRIVE_NUM, 0, 1, DS, (uint32_t)fs_start);
+    if (err != 0){
+        printk("ERROR: Failed to read filesystem from disk code: %d\n", err);
+        return -1;
+    }
     superblock_t* sb = (superblock_t*)fs_start;
+    if (sb->magic_number == MAGIC_NUMBER) {
+        printk("Filesystem found, reading in existing filesystem\n");
+        int num_sectors_to_read = FS_SIZE / 512;
+        err = ide_read_sectors(DRIVE_NUM, 0, num_sectors_to_read, DS, (uint32_t)fs_start);
+        if (err != 0){
+            printk("ERROR: Failed to read filesystem from disk code: %d\n", err);
+            return -1;
+        }
+        __asm__ volatile ("sti");
+        return 0;
+    }
+    printk("Initializing new filesystem\n");
     sb->n_free_blocks = DATA_BLOCKS;
     sb->n_free_inodes = MAX_INODES;
     // Initialize inodes
@@ -465,7 +993,7 @@ int fs_init(void* fs_start, uint32_t fs_size) {
     inodes[0].type = FILE_TYPE_DIRECTORY;
     inodes[0].idx = 0;
     inodes[0].size = 0;
-    inodes[0].location.direct_pointers[0] = allocate_block();
+    inodes[0].location.direct_pointers[0] = fs_allocate_block();
     if (inodes[0].location.direct_pointers[0] == NULL) {
         __asm__ volatile ("sti");
         return -1; // failed to allocate block for root directory
@@ -491,7 +1019,7 @@ int fs_create(const char* path) {
         return -1;
     }
     if (path[strlen(path)-1] == '/') {
-        terminal_writestring("ERROR: Path ends with '/', use fs_mkdir for directories\n");
+        printk("ERROR: Path ends with '/', use fs_mkdir for directories\n");
         return -1;
     }
     
@@ -505,7 +1033,7 @@ int fs_mkdir(const char* path) {
         return -1;
     }
     if (path[strlen(path)-1] != '/') {
-        terminal_writestring("ERROR: Path does not end with '/', use fs_create for files\n");
+        printk("ERROR: Path does not end with '/', use fs_create for files\n");
         return -1;
     }
     
@@ -519,7 +1047,7 @@ int fs_open(const char* path) {
     uint8_t is_root = 0;
     
     if (path == NULL || path[0] != '/') {
-        terminal_writestring("ERROR: Invalid path\n");
+        printk("ERROR: Invalid path\n");
         return -1;
     }
         
@@ -531,7 +1059,7 @@ int fs_open(const char* path) {
         if (strcmp(path, "/") == 0) {
             is_root = 1;
         } else {
-            terminal_writestring("ERROR: Parent directory does not exist\n");
+            printk("ERROR: Parent directory does not exist\n");
             return -1;
         }
     }
@@ -547,7 +1075,7 @@ int fs_open(const char* path) {
             }
         }
         if (fd == -1) {
-            terminal_writestring("ERROR: No free file descriptor available\n");
+            printk("ERROR: No free file descriptor available\n");
             return -1;
         }
         fd_table[tid].entries[fd].status_flags = 0x7; // mark as present, read, write for now
@@ -558,15 +1086,15 @@ int fs_open(const char* path) {
     }
     // getting the inode of the file
     read_filename(path, name);
-    dir_entry_t* dir_entry = find_dir_entry(parent_dir, name);
+    dir_entry_t* dir_entry = fs_find_dir_entry(parent_dir, name);
     if (dir_entry == NULL) {
-        terminal_writestring("ERROR: File does not exist\n");
+        printk("ERROR: File does not exist\n");
         __asm__ volatile ("sti");
         return -1;
     }
     inode_t* file_inode = &((inode_t*)sb->inodes_start)[dir_entry->inode_index];
     if (file_inode == NULL) {
-        terminal_writestring("ERROR: File does not exist\n");
+        printk("ERROR: File does not exist\n");
         __asm__ volatile ("sti");
         return -1;
     }
@@ -580,7 +1108,7 @@ int fs_open(const char* path) {
         }
     }
     if (fd == -1) {
-        terminal_writestring("ERROR: No free file descriptor available\n");
+        printk("ERROR: No free file descriptor available\n");
         __asm__ volatile ("sti");
         return -1;
     }
@@ -594,7 +1122,7 @@ int fs_open(const char* path) {
 
 int fs_close(int fd) {
     if (fd < 0 || fd >= MAX_FD_ENTRIES) {
-        terminal_writestring("ERROR: Invalid file descriptor\n");
+        printk("ERROR: Invalid file descriptor\n");
         return -1;
     }
     
@@ -602,7 +1130,7 @@ int fs_close(int fd) {
     int tid = scheduler.current->tid;
     fd_table_entry_t* fd_entry = &fd_table[tid].entries[fd];
     if ((fd_entry->status_flags & 0x1) == 0) {
-        terminal_writestring("ERROR: File descriptor not open\n");
+        printk("ERROR: File descriptor not open\n");
         __asm__ volatile ("sti");
         return -1;
     }
@@ -617,11 +1145,11 @@ int fs_close(int fd) {
 
 int fs_read_helper(int fd, char* buf, uint32_t n_bytes, int should_lock) {
     if (fd < 0 || fd >= MAX_FD_ENTRIES) {
-        terminal_writestring("ERROR: Invalid file descriptor\n");
+        printk("ERROR: Invalid file descriptor\n");
         return -1;
     }
     if (buf == NULL) {
-        terminal_writestring("ERROR: Invalid buffer\n");
+        printk("ERROR: Invalid buffer\n");
         return -1;
     }
     if (n_bytes == 0) {
@@ -633,14 +1161,14 @@ int fs_read_helper(int fd, char* buf, uint32_t n_bytes, int should_lock) {
     int tid = scheduler.current->tid;
     fd_table_entry_t* fd_entry = &fd_table[tid].entries[fd];
     if ((fd_entry->status_flags & 0x1) == 0) {
-        terminal_writestring("ERROR: File descriptor not open\n");
+        printk("ERROR: File descriptor not open\n");
         if (should_lock) {
             __asm__ volatile ("sti");
         }
         return -1;
     }
     if ((fd_entry->status_flags & 0x2) == 0) {
-        terminal_writestring("ERROR: File descriptor not opened for reading\n");
+        printk("ERROR: File descriptor not opened for reading\n");
         if (should_lock) {
             __asm__ volatile ("sti");
         }
@@ -648,7 +1176,7 @@ int fs_read_helper(int fd, char* buf, uint32_t n_bytes, int should_lock) {
     }
     inode_t* inode = fd_entry->inode;
     if (inode->type == FILE_TYPE_UNUSED) {
-        terminal_writestring("ERROR: Not a File or DIR type\n");
+        printk("ERROR: Not a File or DIR type\n");
         if (should_lock) {
             __asm__ volatile ("sti");
         }
@@ -680,7 +1208,7 @@ int fs_read_helper(int fd, char* buf, uint32_t n_bytes, int should_lock) {
             block_addr = (char*)indirect_block[direct_block_idx];
         }
         if (block_addr == NULL) {
-            terminal_writestring("ERROR: Data block not allocated\n");
+            printk("ERROR: Data block not allocated\n");
             if (should_lock) {
                 __asm__ volatile ("sti");
             }
@@ -701,15 +1229,15 @@ int fs_read( int fd, char* buf, uint32_t n_bytes) {
 }
 int fs_write(int fd, char* buf, uint32_t n_bytes) {
     if (fd < 0 || fd >= MAX_FD_ENTRIES) {
-        terminal_writestring("ERROR: Invalid file descriptor\n");
+        printk("ERROR: Invalid file descriptor\n");
         return -1;
     }
     if (buf == NULL) {
-        terminal_writestring("ERROR: Invalid buffer\n");
+        printk("ERROR: Invalid buffer\n");
         return -1;
     }
     if (n_bytes == 0) {
-        terminal_writestring("whyyyyyyy\n");
+        printk("whyyyyyyy\n");
         return 0; // nothing to write
     }
     
@@ -717,18 +1245,18 @@ int fs_write(int fd, char* buf, uint32_t n_bytes) {
     int tid = scheduler.current->tid;
     fd_table_entry_t* fd_entry = &fd_table[tid].entries[fd];
     if ((fd_entry->status_flags & 0x1) == 0) {
-        terminal_writestring("ERROR: File descriptor not open\n");
+        printk("ERROR: File descriptor not open\n");
         __asm__ volatile ("sti");
         return -1;
     }
     if ((fd_entry->status_flags & 0x4) == 0) {
-        terminal_writestring("ERROR: File descriptor not opened for writing\n");
+        printk("ERROR: File descriptor not opened for writing\n");
         __asm__ volatile ("sti");
         return -1;
     }
     inode_t* inode = fd_entry->inode;
     if (inode->type != FILE_TYPE_FILE) {
-        terminal_writestring("ERROR: Not a File type\n");
+        printk("ERROR: Not a File type\n");
         __asm__ volatile ("sti");
         return -1;
     }
@@ -762,7 +1290,7 @@ int fs_write(int fd, char* buf, uint32_t n_bytes) {
             block_addr = (char*)indirect_block[direct_block_idx];
         }
         if (block_addr == NULL) {
-            terminal_writestring("ERROR: Data block not allocated\n");
+            printk("ERROR: Data block not allocated\n");
             __asm__ volatile ("sti");
             return -1;
         }
@@ -777,11 +1305,11 @@ int fs_write(int fd, char* buf, uint32_t n_bytes) {
 
 int fs_lseek(int fd, uint32_t offset) {
     if (fd < 0 || fd >= MAX_FD_ENTRIES) {
-        terminal_writestring("ERROR: Invalid file descriptor\n");
+        printk("ERROR: Invalid file descriptor\n");
         return -1;
     }
     if (offset < 0) {
-        terminal_writestring("ERROR: Invalid offset\n");
+        printk("ERROR: Invalid offset\n");
         return -1;
     }
     
@@ -789,7 +1317,7 @@ int fs_lseek(int fd, uint32_t offset) {
     int tid = scheduler.current->tid;
     fd_table_entry_t* fd_entry = &fd_table[tid].entries[fd];
     if ((fd_entry->status_flags & 0x1) == 0) {
-        terminal_writestring("ERROR: File descriptor not open\n");
+        printk("ERROR: File descriptor not open\n");
         __asm__ volatile ("sti");
         return -1;
     }
@@ -804,11 +1332,11 @@ int fs_lseek(int fd, uint32_t offset) {
 }
 int fs_unlink(const char *path) {
     if (path == NULL) {
-        terminal_writestring("ERROR: Invalid path\n");
+        printk("ERROR: Invalid path\n");
         return -1;
     }
     if (strcmp(path, "/") == 0) {
-        terminal_writestring("ERROR: Cannot delete root directory\n");
+        printk("ERROR: Cannot delete root directory\n");
         return -1;
     }
     int is_dir = 0;
@@ -819,38 +1347,38 @@ int fs_unlink(const char *path) {
     __asm__ volatile ("cli");
     inode_t* parent_dir = get_parent_dir_inode(path);
     if (parent_dir == NULL) {
-        terminal_writestring("ERROR: Parent directory does not exist\n");
+        printk("ERROR: Parent directory does not exist\n");
         __asm__ volatile ("sti");
         return -1;
     }
     char name[MAX_FILENAME_LEN + 1];
     read_filename(path, name);
-    dir_entry_t* dir_entry = find_dir_entry(parent_dir, name);
+    dir_entry_t* dir_entry = fs_find_dir_entry(parent_dir, name);
     if (dir_entry == NULL) {
-        terminal_writestring("ERROR: File/Directory does not exist\n");
+        printk("ERROR: File/Directory does not exist\n");
         __asm__ volatile ("sti");
         return -1;
     }
     inode_t* inode = &((inode_t*)((superblock_t*)fs_ptr)->inodes_start)[dir_entry->inode_index];
     if (inode == NULL) {
-        terminal_writestring("ERROR: File does not exist\n");
+        printk("ERROR: File does not exist\n");
         __asm__ volatile ("sti");
         return -1;
     }
     if (inode->num_accessed > 0) {
-        terminal_writestring("ERROR: File is currently open or Directory is currently accessed\n");
+        printk("ERROR: File is currently open or Directory is currently accessed\n");
         __asm__ volatile ("sti");
         return -1;
     }
     if (inode->type == FILE_TYPE_UNUSED) {
-        terminal_writestring("ERROR: Not a file or directory\n");
+        printk("ERROR: Not a file or directory\n");
         __asm__ volatile ("sti");
         return -1;
     }
     // deallocate all data blocks
     for (int i = 0; i < N_DIRECT_POINTERS; i++) {
         if (inode->location.direct_pointers[i] != NULL) {
-            deallocate_block(inode->location.direct_pointers[i]);
+            fs_deallocate_block(inode->location.direct_pointers[i]);
         }
     }
     // handle indirect pointers
@@ -859,10 +1387,10 @@ int fs_unlink(const char *path) {
             void** indirect_block = (void**)inode->location.indirect_pointer[i];
             for (int j = 0; j < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; j++) {
                 if (indirect_block[j] != NULL) {
-                    deallocate_block(indirect_block[j]);
+                    fs_deallocate_block(indirect_block[j]);
                 }
             }
-            deallocate_block(inode->location.indirect_pointer[i]);
+            fs_deallocate_block(inode->location.indirect_pointer[i]);
         }
     }
     // handle double indirect pointers
@@ -874,13 +1402,13 @@ int fs_unlink(const char *path) {
                     void** indirect_block = (void**)double_indirect_block[j];
                     for (int k = 0; k < DIRECT_BLOCKS_PER_INDIRECT_BLOCK; k++) {
                         if (indirect_block[k] != NULL) {
-                            deallocate_block(indirect_block[k]);
+                            fs_deallocate_block(indirect_block[k]);
                         }
                     }
-                    deallocate_block(double_indirect_block[j]);
+                    fs_deallocate_block(double_indirect_block[j]);
                 }
             }
-            deallocate_block(inode->location.double_indirect_pointer[i]);
+            fs_deallocate_block(inode->location.double_indirect_pointer[i]);
         }
     }
     memset(inode, 0, sizeof(inode_t));
@@ -988,11 +1516,11 @@ int fs_unlink(const char *path) {
 int fs_readdir(int fd, char *buf) {
     
     if (fd < 0 || fd >= MAX_FD_ENTRIES) {
-        terminal_writestring("ERROR: Invalid file descriptor\n");
+        printk("ERROR: Invalid file descriptor\n");
         return -1;
     }
     if (buf == NULL) {
-        terminal_writestring("ERROR: Invalid buffer\n");
+        printk("ERROR: Invalid buffer\n");
         return -1;
     }
     
@@ -1000,28 +1528,28 @@ int fs_readdir(int fd, char *buf) {
     int tid = scheduler.current->tid;
     fd_table_entry_t* fd_entry = &fd_table[tid].entries[fd];
     if ((fd_entry->status_flags & 0x1) == 0) {
-        terminal_writestring("ERROR: File descriptor not open\n");
+        printk("ERROR: File descriptor not open\n");
         __asm__ volatile ("sti");
         return -1;
     }
     if (fd_entry->file_offset%sizeof(dir_entry_t) != 0) {
-        terminal_writestring("ERROR: Directory offset is not aligned with directory entry");
+        printk("ERROR: Directory offset is not aligned with directory entry");
         __asm__ volatile ("sti");
         return -1;
     }
     inode_t* inode = fd_entry->inode;
     if (inode->type != FILE_TYPE_DIRECTORY) {
-        terminal_writestring("ERROR: Not a directory\n");
+        printk("ERROR: Not a directory\n");
         __asm__ volatile ("sti");
         return -1;
     }int read_ret = fs_read_helper(fd, buf, sizeof(dir_entry_t), 0);
     if (read_ret != sizeof(dir_entry_t)) {
         if (read_ret == -1) {
-            terminal_writestring("ERROR: fs_read errored\n");
+            printk("ERROR: fs_read errored\n");
             __asm__ volatile ("sti");
             return -1;
         }
-        terminal_writestring("ERROR: Could not read full directory entry\n");
+        printk("ERROR: Could not read full directory entry\n");
         __asm__ volatile ("sti");
         return -1;
     }

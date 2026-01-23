@@ -91,6 +91,8 @@
 #define ATA_SECONDARY_CMD_BASE   0x170 // BAR2
 #define ATA_SECONDARY_CTRL_BASE  0x376 // BAR3
 
+#define SECTOR_SIZE 512
+
 typedef struct IDEChannelRegisters {
    unsigned short base;  // I/O Base.
    unsigned short ctrl;  // Control Base

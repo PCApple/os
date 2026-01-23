@@ -59,3 +59,15 @@ int memcpy(void* dest, void* src, uint32_t n) {
     }
     return 0;
 }
+int hash_to_idx(int idx, uint32_t array_size) {
+    uint32_t x = (uint32_t)idx;  // preserves bit pattern for negatives
+
+    // Mix (avalanche)
+    x ^= x >> 16;
+    x *= 0x85ebca6bU;
+    x ^= x >> 13;
+    x *= 0xc2b2ae35U;
+    x ^= x >> 16;
+
+    return (int)(x % (uint32_t)array_size);
+}

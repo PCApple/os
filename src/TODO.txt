@@ -1,14 +1,18 @@
 DONE:
 revamp kalloc/kfree to take size
     also now does variable memory initialization
+disk driver(IDE)
+
 Next goal:
 disk permanence
-    need disk driver
+    need to add disk functionality to fs 
+        working through adding a cache, on fs_find_dir_entry()
 
 Near term goals:
 move in mem disk to dunamic allocation
 Bug fix scheduler
     weird skip of time, maybe have a dynamic timer
+sleep(ms)
 
 Mid term goals:
 user mode

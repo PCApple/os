@@ -1,0 +1,2 @@
+CompileFlags:
+  Add: [-m32, -ffreestanding, -nostdlib, -target, i386-elf]
