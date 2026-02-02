@@ -1,6 +1,5 @@
 #ifndef __IO_H__
 #define __IO_H__
-#include "types.h"
 
 static inline unsigned char inb( unsigned short usPort ) {
 
@@ -61,7 +60,4 @@ static inline void pushf() {
 static inline void sti() {
     __asm__ volatile ("sti");
 }
-
-
-void get_esp(uint32_t *esp);
 #endif

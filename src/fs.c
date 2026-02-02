@@ -1,4 +1,5 @@
 #include "include/fs.h"
+#include "include/lru_cache.h"
 
 
 static fd_table_t fd_table[MAX_NUM_THREADS]; // global file descriptor table
@@ -10,79 +11,6 @@ cache_t* bitmap_cache; // all the caches, might be a lot
 
 
 // -------------------------------- internal helper functions --------------------------------//
-// reads in one block of memory from disk using ATA IDE
-// @param index the index
-int fs_read_block_from_disk(uint32_t index, void* buffer) {
-    char* sect_buffer = mem_kalloc(SECTOR_SIZE);
-    int err = 0;
-    if (sect_buffer == NULL) {
-        return -1;
-    }
-    uint32_t block_addr = index * BLOCK_SIZE;
-    uint8_t isLowBlock = 0;
-    if (block_addr %512 == 0) {
-        isLowBlock = 1;
-    }
-    err = ide_read_sectors(DRIVE_NUM, block_addr, 1, DS, (uint32_t) sect_buffer);
-    if (err != 0) {
-        mem_kfree(sect_buffer);
-        return -1;
-    }
-    if (isLowBlock) {
-        err = memcpy(buffer, sect_buffer, BLOCK_SIZE);   
-        if (err != 0) {
-            mem_kfree(sect_buffer);
-            return -1;
-        }
-
-    } else {
-        err  = memcpy(buffer, sect_buffer+BLOCK_SIZE, BLOCK_SIZE);
-        if (err != 0) {
-            mem_kfree(sect_buffer);
-            return -1;
-        }
-    }
-    mem_kfree(sect_buffer);
-    return 0;
-}
-// writes block(256 bytes) to disk using ATA IDE
-// @param index the block index to write to
-// @param buffer the buffer to write
-// @return 0 on success, else fail
-int fs_write_block_to_disk(uint32_t index, void*buffer) {
-    char* sect_buffer = mem_kalloc(SECTOR_SIZE);
-    int err = 0;
-    uint32_t block_addr = index * BLOCK_SIZE;
-    uint8_t isLowBlock = 0;
-    if (block_addr %SECTOR_SIZE == 0) {
-        isLowBlock = 1;
-    }
-    err = ide_read_sectors(DRIVE_NUM, block_addr, 1, DS, (uint32_t) sect_buffer);
-    if (err != 0) {
-        mem_kfree(sect_buffer);
-        return -1;
-    }
-    if (isLowBlock) {
-        err = memcpy(sect_buffer, buffer, BLOCK_SIZE);   
-        if (err != 0) {
-            mem_kfree(sect_buffer);
-            return -1;
-        }
-
-    } else {
-        err  = memcpy(sect_buffer+BLOCK_SIZE, buffer, BLOCK_SIZE);
-        if (err != 0) {
-            mem_kfree(sect_buffer);
-            return -1;
-        }
-    }
-    err = ide_write_sectors(DRIVE_NUM, block_addr, 1, DS, (uint32_t) sect_buffer);
-    mem_kfree(sect_buffer);
-    if (err != 0) {  
-        return -1;
-    }
-    return 0;
-}
 // this will first look for the block in the cache, if not found will read from disk and store in cache
 // @param block_idx index of the block to read
 // @param buffer pointer to store the read block, this should not be allocated beforehand
@@ -93,89 +21,31 @@ int fs_get_and_lock_block(int block_idx, void* buffer){
         return -1;
     }
     else if (block_idx == 0) { // super block
-        superblock_cache_t* sb_cache_entry = (superblock_cache_t*)superblock_cache->cache;
-        if (sb_cache_entry->refcnt > MAX_REFS) {
-            return -1; // already locked
+        buffer = lru_cache_get_and_lock(superblock_cache, block_idx);
+        if (buffer == NULL) {
+            return -1;
         }
-        buffer = &((superblock_cache_t*)(superblock_cache->cache))->superblock;
-        sb_cache_entry->refcnt++;
         return 0;
     }
     else if (block_idx <= INODE_BLOCKS) { // reading inode blocks
-        // look for in cache first
-        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
-            inode_cache_entry_t* cache_entry = &((inode_cache_entry_t*)inode_cache->cache)[i];
-            if (cache_entry->used && cache_entry->inode_index == block_idx) {
-                if (cache_entry->refcnt > MAX_REFS) {
-                    return -1; // already locked
-                }
-                buffer = &cache_entry->inode;
-                cache_entry->refcnt++;
-                return 0;
-            }
+        buffer = lru_cache_get_and_lock(inode_cache, block_idx);
+        if (buffer == NULL) {
+            return -1;
         }
-        // not found in cache, load into next available cache entry
-        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
-            int next_idx = (inode_cache->next_ptr + i) % INODE_CACHE_SIZE;
-            inode_cache_entry_t* next_entry = &((inode_cache_entry_t*)inode_cache->cache)[next_idx];
-            if (next_entry->refcnt > MAX_REFS) {
-                continue;
-            }
-            if (next_entry->dirty && next_entry->used) {
-                uint32_t dirty_idx = next_entry->inode_index;
-                void* inode = &next_entry->inode;
-                fs_write_block_to_disk(dirty_idx, inode);
-                next_entry->dirty = 0;
-            }
-            next_entry->used = 1;
-            next_entry->inode_index = block_idx;
-            next_entry->refcnt = 1;
-            fs_read_block_from_disk(block_idx, &next_entry->inode);
-            buffer = &next_entry->inode;
-            inode_cache->next_ptr = next_idx + 1;     
-            return 0;
-        }
-        return -1; // cache full for some reason
+        return 0;            
         
-    } else if (block_idx <= INODE_BLOCKS + BITMAP_BLOCKS) {
-        block_bitmap_cache_entry_t* bb_cache_entry = (block_bitmap_cache_entry_t*)bitmap_cache->cache;
-        if (bb_cache_entry->refcnt > MAX_REFS) {
-            return -1; // already locked
+    } else if (block_idx <= INODE_BLOCKS + BITMAP_BLOCKS) { // bitmap block
+        buffer = lru_cache_get_and_lock(bitmap_cache, block_idx);
+        if (buffer == NULL) {
+            return -1;
         }
-        bb_cache_entry->refcnt++;
-        int bitmap_idx = block_idx - 1 - INODE_BLOCKS; // should be 0-3
-        buffer = (void*)((char*)(bb_cache_entry->block_bitmap.bitmap) + bitmap_idx*BLOCK_SIZE);
-        return 0;                
+        return 0;     
     } else { // data block
-        for (int i = 0; i < DATA_BLOCK_CACHE_SIZE; i++) {
-            data_block_cache_entry_t* cache_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[i];
-            if (cache_entry->used && cache_entry->block_num == block_idx) {
-                buffer = &cache_entry->data;
-                cache_entry->refcnt++;
-                return 0;
-            }
+        buffer = lru_cache_get_and_lock(data_block_cache, block_idx);
+        if (buffer == NULL) {
+            return -1;
         }
-        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
-            int next_idx = (data_block_cache->next_ptr + i) % DATA_BLOCK_CACHE_SIZE;
-            data_block_cache_entry_t* next_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[next_idx];
-            if (next_entry->refcnt > MAX_REFS) {
-                continue;
-            }
-            if (next_entry->dirty && next_entry->used) {
-                uint32_t dirty_idx = next_entry->block_num;
-                void* data = &next_entry->data;
-                fs_write_block_to_disk(dirty_idx, data);
-                next_entry->dirty = 0;
-            }
-            next_entry->used = 1;
-            next_entry->block_num = block_idx;
-            fs_read_block_from_disk(block_idx, &next_entry->data);
-            next_entry->refcnt = 1;
-            buffer = &next_entry->data;
-            data_block_cache->next_ptr = next_idx + 1;
-            return 0;
-        }
-        return -1; // cache full for some reason
+        return 0;
     }
 }
 // frees the block from cache and decrements refcnt, this is the way to mark a block as "dirty" and ready to be written back to disk
@@ -187,90 +57,34 @@ int fs_release_block(int block_idx, int is_modified) {
         return -1;
     }
     else if (block_idx == 0) { // super block
-        superblock_cache_t* sb_cache_entry = (superblock_cache_t*)superblock_cache->cache;
-        if (sb_cache_entry->refcnt == 0) {
-            return -1; // not locked
-        }
-        if (is_modified) {
-            sb_cache_entry->dirty = 1; // mark dirty on release
-        }
-        sb_cache_entry->refcnt--;
-        return 0;
+        return lru_cache_update_and_release(superblock_cache, block_idx, is_modified);
     }
     else if (block_idx <= INODE_BLOCKS) { // inode block
-        for (int i = 0; i < INODE_CACHE_SIZE; i++) {
-            inode_cache_entry_t* cache_entry = &((inode_cache_entry_t*)inode_cache->cache)[i];
-            if (cache_entry->used && cache_entry->inode_index == block_idx) {
-                if (cache_entry->refcnt == 0) {
-                    return -1; // not locked
-                }
-                if (is_modified) {
-                    cache_entry->dirty = 1; // mark dirty on release
-                }
-                cache_entry->refcnt--;
-                return 0;
-            }
-        }
-        return -1; // not found in cache
-    } else if (block_idx <= INODE_BLOCKS + BITMAP_BLOCKS) {
-        block_bitmap_cache_entry_t* bb_cache_entry = (block_bitmap_cache_entry_t*)bitmap_cache->cache;
-        if (bb_cache_entry->refcnt == 0) {
-            return -1; // not locked
-        }
-        if (is_modified) {
-            bb_cache_entry->dirty = 1; // mark dirty on release
-        }
-        bb_cache_entry->refcnt--;
-        return 0;                
+        return lru_cache_update_and_release(inode_cache, block_idx, is_modified);
+    } else if (block_idx <= INODE_BLOCKS + BITMAP_BLOCKS) { // bitmap block
+        return lru_cache_update_and_release(bitmap_cache, block_idx, is_modified);        
     } else { // data block
-        for (int i = 0; i < DATA_BLOCK_CACHE_SIZE; i++) {
-            data_block_cache_entry_t* cache_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[i];
-            if (cache_entry->used && cache_entry->block_num == block_idx) {
-                if (cache_entry->refcnt == 0) {
-                    return -1; // not locked
-                }
-                if (is_modified) {
-                    cache_entry->dirty = 1; // mark dirty on release
-                }
-                cache_entry->refcnt--;
-                return 0;
-            }
-        }
-        return -1; // not found in cache
-    }        
+        return lru_cache_update_and_release(data_block_cache, block_idx, is_modified);
+    }
 }
 // flushes all memory changes to disk
 // @return 0 on success, else fail
 int fs_flush() {
     //flush superblock
-    superblock_cache_t* sb_cache_entry = (superblock_cache_t*)superblock_cache->cache;
-    if (sb_cache_entry->dirty && sb_cache_entry->refcnt == 0) {
-        fs_write_block_to_disk(0, &sb_cache_entry->superblock);
-        sb_cache_entry->dirty = 0;
+    if (lru_cache_flush(superblock_cache) != 0) {
+        return -1;
     }
     //flush inode cache
-    for (int i = 0; i < INODE_CACHE_SIZE; i++) {
-        inode_cache_entry_t* cache_entry = &((inode_cache_entry_t*)inode_cache->cache)[i];
-        if (cache_entry->dirty && cache_entry->refcnt == 0) {
-            fs_write_block_to_disk(cache_entry->inode_index, &cache_entry->inode);
-            cache_entry->dirty = 0;
-        }
+    if (lru_cache_flush(inode_cache) != 0) {
+        return -1;
     }
     //flush bitmap cache
-    block_bitmap_cache_entry_t* bb_cache_entry = (block_bitmap_cache_entry_t*)bitmap_cache->cache;
-    if (bb_cache_entry->dirty && bb_cache_entry->refcnt == 0) {
-        for (int i = 0; i < BITMAP_BLOCKS; i++) {
-            fs_write_block_to_disk(1 + INODE_BLOCKS + i, (void*)((char*)(bb_cache_entry->block_bitmap.bitmap) + i*BLOCK_SIZE));
-        }
-        bb_cache_entry->dirty = 0;
+    if (lru_cache_flush(bitmap_cache) != 0) {
+        return -1;
     }
     //flush data block cache
-    for (int i = 0; i < DATA_BLOCK_CACHE_SIZE; i++) {
-        data_block_cache_entry_t* cache_entry = &((data_block_cache_entry_t*)data_block_cache->cache)[i];
-        if (cache_entry->dirty && cache_entry->refcnt == 0) {
-            fs_write_block_to_disk(cache_entry->block_num, &cache_entry->data);
-            cache_entry->dirty = 0;
-        }
+    if (lru_cache_flush(data_block_cache) != 0) {
+        return -1;
     }
     return 0;
 }
@@ -278,12 +92,12 @@ int fs_flush() {
 // @param inode_idx index of the inode to read
 // @param inode_result pointer to store the read inode
 // @param superblock_ptr pointer to the superblock, can be left NULL if superblock is not already read, but it is currently used then you will need to provide it
-// @return 0 on success, -1 on failure
+// @return returns block index on success, 0 on failure
 int fs_get_inode(int inode_idx, inode_t* inode_result, void* superblock_ptr) {
     superblock_t* sb;
     if (superblock_ptr == NULL) {
         if (fs_get_and_lock_block(0, sb)) {
-            return -1;
+            return 0;
         }
     } else {
         sb = (superblock_t*)superblock_ptr;
@@ -292,19 +106,19 @@ int fs_get_inode(int inode_idx, inode_t* inode_result, void* superblock_ptr) {
         if (superblock_ptr == NULL) {
             fs_release_block(0, 0);
         }
-        return -1;
+        return 0;
     }
     inode_t* inode_block;
-    int block_idx = 1 + (inode_idx / INODES_PER_BLOCK);
+    int block_idx = sb->inode_index + (inode_idx / INODES_PER_BLOCK);
     if (fs_get_and_lock_block(block_idx, inode_block)) {
         if (superblock_ptr == NULL) {
             fs_release_block(0, 0);
         }
-        return -1;
+        return 0;
     }
     int inode_offset = inode_idx % INODES_PER_BLOCK;
     *inode_result = inode_block[inode_offset];
-    return 0;
+    return block_idx;
 }
 /*
     returns the index of a free data block and marks it as used in the block bitmap and decrements n_free_blocks in the superblock
@@ -362,7 +176,7 @@ int fs_deallocate_block(int block_idx) {
     char* bb;
     
     uint32_t block_num = block_idx - sb->data_blocks_index;
-    uint32 block_part_num = block_num / (DATA_BLOCKS / BITMAP_BLOCKS);
+    uint32_t block_part_num = block_num / (DATA_BLOCKS / BITMAP_BLOCKS);
     if(fs_get_and_lock_block(1 + INODE_BLOCKS + block_part_num, bb)) {
         fs_release_block(0, 0);
         return -1;
@@ -509,7 +323,7 @@ inode_t* get_parent_dir_inode(const char* path){
     uint32_t path_idx = 1;
     inode_t* curr_dir;
     uint32_t curr_inode_block_idx = 1 + (sb->inode_index / INODES_PER_BLOCK);
-    if (fs_get_inode(sb->inode_index, curr_dir, sb) != 0){
+    if (fs_get_inode(sb->inode_index, curr_dir, sb) == 0){
         fs_release_block(0, 0);
         return NULL;
     }
@@ -565,6 +379,9 @@ inode_t* get_parent_dir_inode(const char* path){
     fs_release_block(0, 0);
     return NULL; // should not reach here probably
 }
+// extracts the filename from the full path, i dont think this does directory names but im too stupid to eyeball it
+// @param path full path to the file/directory
+// @param filename pointer to store the extracted filename
 void read_filename(const char* path, char* filename) {
     uint32_t last_slash = 0;
     uint8_t isdir = 0;
@@ -756,7 +573,7 @@ int create_or_mkdir(const char* path) {
     dir_entry_t* dir_entry;
     if (fs_find_dir_entry(parent_dir, name, dir_entry)){
         printk("Error: cannot find dir entry in parent");
-        fs_release_block(0, 0);
+        return -1;
     }
     if (dir_entry != NULL) {
         printk("ERROR: File/Directory already exists\n");
@@ -772,8 +589,7 @@ int create_or_mkdir(const char* path) {
     inode_t* new_inode;
     for (int i = 0; i < MAX_INODES; i++)
     {
-
-        if(fs_get_inode(sb->inode_index + i, new_inode, sb)){
+        if(fs_get_inode(i, new_inode, sb)){
             continue; // inode is used, skip
         }
         if (new_inode->type == FILE_TYPE_UNUSED) {

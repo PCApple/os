@@ -1,7 +1,7 @@
 #ifndef __PRINT_H
 #define __PRINT_H
-#include "types.h"
-#include "stdarg.h"
+#include <stddef.h>
+#include <stdint.h>
 enum vga_color
 {
   COLOR_BLACK = 0,

@@ -1,6 +1,6 @@
 #ifndef __PIT_H__
 #define __PIT_H__
-#include "types.h"
+#include <stdint.h>
 #include "io.h"
 #include "int.h"
 

@@ -1,6 +1,6 @@
 #ifndef __TCB_H__
 #define __TCB_H__
-#include "types.h"
+#include <stdint.h>
 typedef enum thread_state {
   UNUSED = 0, // set when the thread is not in use
   INITIALIZED = 1, // set when the thread is initialized, need to create fake stack

@@ -1,6 +1,6 @@
 #ifndef __SCHEDULER_H__
 #define __SCHEDULER_H__
-#include "types.h"
+#include <stdint.h>
 #include "tcb.h"
 #include "heap.h"
 #include "io.h"
@@ -118,17 +118,17 @@ tcb_t* thread_get_new_tcb();
 
 // basic stuff
 int scheduler_init();
-int scheduler_create_task(tcb_t* task, uint32 prio);
+int scheduler_create_task(tcb_t* task, uint32_t prio);
 int scheduler_preempt();
 void scheduler_run();
 
 // priority utils
-int scheduler_set_prio(uint32 tid, uint32 prio);
-int scheduler_get_prio(uint32 tid);
+int scheduler_set_prio(uint32_t tid, uint32_t prio);
+int scheduler_get_prio(uint32_t tid);
 
 
 // RMS utils
-int scheduler_is_schedulable(uint32 c, uint32 t);
+int scheduler_is_schedulable(uint32_t c, uint32_t t);
 
 // context switch
 void scheduler_context_switch(tcb_t *prev, tcb_t *next);

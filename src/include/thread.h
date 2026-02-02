@@ -1,6 +1,6 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
-#include "types.h"
+#include <stdint.h>
 #include "scheduler.h"
 #include "mem.h"
 typedef struct thread_args {

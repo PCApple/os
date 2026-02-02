@@ -1,6 +1,6 @@
 #ifndef __INT_H__
 #define __INT_H__
-#include "types.h"
+#include <stdint.h>
 #include "print.h"
 #include "io.h"
 #include "scheduler.h"

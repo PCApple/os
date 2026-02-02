@@ -1,4 +1,5 @@
-#include "types.h"
+#include <stdint.h>
+#define NULL ((void*)0)
 int ceiling(int numerator, int denominator);
 int memcmp(void *s1, void *s2, uint32_t n);
 int memset(void* source, int value, uint32_t n);

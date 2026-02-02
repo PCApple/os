@@ -1,6 +1,6 @@
 #ifndef __GDT_H__
 #define __GDT_H__
-#include "types.h"
+#include <stdint.h>
 
 #define GDT_SIZE 5 // null, kernel code, kernel data, user code, user data
 

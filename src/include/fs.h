@@ -1,27 +1,27 @@
 #ifndef __FS_H
 #define __FS_H
 
-#include "types.h"
+#include <stdint.h>
 #include "mem.h"
 #include "print.h"
 #include "scheduler.h"
-#include "types.h"
 #include "io.h"
 #include "utils.h"
 #include "ide.h"
+#include "lru_cache.h"
+#include "spinlock.h"
 
-#define DS 0x10
-#define DRIVE_NUM 1 
-#define MAX_REFS 1 // setting this to one 
+
+
 #define MAX_NUM_THREADS 16
 #define TEST_THREAD_NUM 0 // for testing purposes in userspace, we only use one thread
 #define MAX_FD_ENTRIES 16 // max number of open file descriptors per thread
 
 #define INODE_CACHE_SIZE 56 // max number of inode cache entries that can me stored in one page - 4
 #define DATA_BLOCK_CACHE_SIZE 152 // max number of data block cache entries that can be stored in 10 pages - 4
+#define BLOCK_SIZE 256 // size of one block in bytes
 
 #define FS_SIZE (2048*1024) // 2MB filesystem size
-#define BLOCK_SIZE 256
 #define INODE_SIZE 64
 #define INODES_PER_BLOCK ((BLOCK_SIZE) / (INODE_SIZE)) // 4 inodes per block
 #define INODE_BLOCKS 256
@@ -63,7 +63,7 @@ typedef struct superblock {
     uint32_t inode_index; // index of root inode (should be 0)
     uint32_t bb_index; // index of block bitmap start (should be 1 + INODE_BLOCKS)
     uint32_t data_blocks_index; // index of data blocks start (should be 1 + INODE_BLOCKS + BITMAP_BLOCKS)
-    char padding[BLOCK_SIZE - 12 - sizeof(uint32_t)];
+    char padding[BLOCK_SIZE - 20 - sizeof(uint32_t)];
     uint32_t magic_number;
 } superblock_t;
 
@@ -90,42 +90,6 @@ typedef struct fd_table_entry {
 typedef struct fd_table {
     fd_table_entry_t entries[MAX_FD_ENTRIES];
 } fd_table_t;
-
-//caching structures
-typedef struct inode_cache_entry {
-    uint16_t inode_index;
-    uint8_t used;
-    uint8_t dirty;
-    uint32_t refcnt;
-    inode_t inode;
-} inode_cache_entry_t;
-
-typedef struct data_block_cache_entry {
-    uint32_t block_num;
-    uint32_t refcnt;
-    uint8_t used;
-    uint8_t dirty;
-    uint8_t data[BLOCK_SIZE];
-} data_block_cache_entry_t;
-
-typedef struct superblock_cache {
-    uint8_t used;
-    uint8_t dirty;
-    uint32_t refcnt;
-    superblock_t superblock;
-} superblock_cache_t;
-
-typedef struct block_bitmap_cache_entry {
-    uint8_t used;
-    uint8_t dirty;
-    uint32_t refcnt;
-    block_bitmap_t block_bitmap;
-} block_bitmap_cache_entry_t;
-
-typedef struct cache {
-    void* cache;
-    int next_ptr;
-} cache_t;
 
 int fs_flush();
 int fs_init(void* fs_start, uint32_t fs_size);

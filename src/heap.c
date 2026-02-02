@@ -49,7 +49,7 @@ int heapify_helper(heap_node_t *heap, int index, int size) {
 // @param obj: pointer to the object to be inserted
 // @param prio: priority of the object
 // @return: 0 on success, -1 on failure
-int heap_insert(heap_node_t *heap, tcb_t *obj, uint32 prio) {
+int heap_insert(heap_node_t *heap, tcb_t *obj, uint32_t prio) {
   int size = get_heap_size(heap);
   if (size == -1 || size >= MAX_HEAP_SIZE) {
     return -1;

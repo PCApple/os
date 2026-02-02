@@ -3,7 +3,7 @@
 gdt_entry_t gdt[GDT_SIZE];
 gdtr_t gdtr;
 
-extern void lgdt(uint32 gdtr_ptr);
+extern void lgdt(uint32_t gdtr_ptr);
 
 /*
 * Sets a GDT entry at index IDX with the given BASE, LIMIT, ACCESS_BYTE, and FLAGS.

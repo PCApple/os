@@ -1,6 +1,7 @@
 #ifndef __MEM_H__
 #define __MEM_H__
-#include "types.h"
+#include <stdint.h>
+#include <stddef.h>
 #include "multiboot.h"
 #include "utils.h"
 

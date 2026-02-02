@@ -1,7 +1,7 @@
 #ifndef TEST_FUNCS_H
 #define TEST_FUNCS_H
 
-#include "types.h"
+#include <stdint.h>
 #include "print.h"
 #include "scheduler.h"
 #include "mem.h"
