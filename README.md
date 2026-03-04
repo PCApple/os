@@ -1,1 +1,1 @@
-My operating system
+Hello! This is my operating system that I've been messing around with. Currently working on revamping the dummy file system so that it can persist on disk and has a LRU cache of blocks for faster reads.
