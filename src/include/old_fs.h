@@ -92,7 +92,7 @@ typedef struct fd_table {
 } fd_table_t;
 
 int fs_flush();
-int fs_init(void* fs_start, uint32_t fs_size);
+int fs_init(int drive_num);
 int fs_create(const char* path);
 int fs_mkdir(const char* path);
 int fs_open(const char* path);

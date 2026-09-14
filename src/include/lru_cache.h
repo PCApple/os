@@ -1,5 +1,5 @@
-#ifndef CACHE_H
-#define CACHE_H
+#ifndef LRU_CACHE_H
+#define LRU_CACHE_H
 #include "spinlock.h"
 #include <stdalign.h>
 #include <stdint.h>

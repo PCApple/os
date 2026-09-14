@@ -4,10 +4,9 @@
 #include "include/scheduler.h"
 #include "include/thread.h"
 #include "include/gdt.h"
-#include "include/fs.h"
 #include "include/ide.h"
-
-char fs_buf[FS_SIZE];
+#include "include/block_cache.h"
+#include "include/tests.h"
 
 void init(unsigned int magic_num, multiboot_info_t* binfo) {
   multiboot_info_t* mmap = binfo;
@@ -33,22 +32,19 @@ void init(unsigned int magic_num, multiboot_info_t* binfo) {
   //printk("IDT initialized\n");
   
 
-  void* fs_mem = &fs_buf;
-  if (fs_mem == NULL) {
-    printk("Filesystem memory allocation failed\n");
-    return;
-  }
-  printk("Filesystem memory allocated\n");
-  int fs_ret = fs_init(fs_mem, FS_SIZE);
-  if (fs_ret != 0) {
-    printk("Filesystem initialization failed\n");
-    return;
-  }
-  printk("Filesystem initialized successfully\n");  
+  // Filesystem startup is temporarily disabled while the kernel is repaired.
+  printk("Filesystem disabled\n");
   thread_init();
   printk("Thread system initialized\n");
   scheduler_init();
   printk("Scheduler initialized\n");
+  cache_init();
+  printk("Block cache initialized\n");
+  printk("Starting tests...\n");
+  test_block_cache();
+  printk("Tests completed.\n");
+
+  
   // thread_args_t* args = (thread_args_t*)mem_alloc(0);
   // test_args_t *targs = (test_args_t *)mem_alloc(0);
   //ide_initialize(0, 0,0,0,0x0);
@@ -95,4 +91,3 @@ void init(unsigned int magic_num, multiboot_info_t* binfo) {
 
   while (1){}
 }
-

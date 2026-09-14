@@ -3,10 +3,10 @@
 
 
 static fd_table_t fd_table[MAX_NUM_THREADS]; // global file descriptor table
-cache_t* inode_cache;
-cache_t* data_block_cache;
-cache_t* superblock_cache;
-cache_t* bitmap_cache; // all the caches, might be a lot
+// cache_t* inode_cache;
+// cache_t* data_block_cache;
+// cache_t* superblock_cache;
+// cache_t* bitmap_cache; // all the caches, might be a lot
 
 
 
@@ -93,7 +93,7 @@ int fs_flush() {
 // @param inode_result pointer to store the read inode
 // @param superblock_ptr pointer to the superblock, can be left NULL if superblock is not already read, but it is currently used then you will need to provide it
 // @return returns block index on success, 0 on failure
-int fs_get_inode(int inode_idx, inode_t* inode_result, void* superblock_ptr) {
+int fs_get_and_lock_inode(int inode_idx, inode_t* inode_result, void* superblock_ptr) {
     superblock_t* sb;
     if (superblock_ptr == NULL) {
         if (fs_get_and_lock_block(0, sb)) {
@@ -122,15 +122,22 @@ int fs_get_inode(int inode_idx, inode_t* inode_result, void* superblock_ptr) {
 }
 /*
     returns the index of a free data block and marks it as used in the block bitmap and decrements n_free_blocks in the superblock
-    returns 0 if no free block is available
+    @param superblock_ptr pointer to the superblock, can leave NULL if superblock is not already read, but it is currently used then you will need to provide it
 */
 
-uint32_t fs_allocate_block(){
+uint32_t fs_allocate_block(void* superblock_ptr){
     superblock_t* sb;
-    if (fs_get_and_lock_block(0, sb)){
-        return 0;
+    if (superblock_ptr == NULL) {
+        if (fs_get_and_lock_block(0, sb)) {
+            return 0;
+        }
+    } else {
+        sb = (superblock_t*)superblock_ptr;
     }
     if (sb->n_free_blocks == 0) {
+        if (superblock_ptr == NULL) {
+            fs_release_block(0, 0);
+        }
         return 0; // no free blocks
     }
     char* bb;
@@ -140,11 +147,17 @@ uint32_t fs_allocate_block(){
         int bb_block_idx = 1 + INODE_BLOCKS + i;
 
         if(fs_get_and_lock_block(bb_block_idx, bb)){
-            fs_release_block(0, 0);
+            if (superblock_ptr == NULL) {
+                fs_release_block(0, 0);
+            }
             return 0;
         }
         for (int j = 0; j < BLOCK_SIZE; j++) {
             if (total_data_blocks_checked > DATA_BLOCKS) {
+                fs_release_block(bb_block_idx, 0);
+                if (superblock_ptr == NULL) {
+                    fs_release_block(0, 0);
+                }
                 return 0; // no free blocks
             }
             total_data_blocks_checked++;
@@ -154,7 +167,9 @@ uint32_t fs_allocate_block(){
                     uint32_t block_num = i * BLOCK_SIZE * 8 + j * 8 + k;
                     fs_release_block(bb_block_idx, 1);
                     sb->n_free_blocks--;
-                    fs_release_block(0, 1);
+                    if (superblock_ptr == NULL) {
+                        fs_release_block(0, 1);
+                    }
                     int block_idx = 1 + INODE_BLOCKS + BITMAP_BLOCKS + block_num; // calculate block index
                     return block_idx;                 
                 }
@@ -167,18 +182,25 @@ uint32_t fs_allocate_block(){
 }
 // deallocates the block at the index passed in, does not clear mem
 // @param block_idx the block index of the block to free
+// @param superblock_ptr pointer to the superblock, can leave NULL if superblock is not already read, but it is currently used then you will need to provide it
 // 0 on success, else fail
-int fs_deallocate_block(int block_idx) {
+int fs_deallocate_block(int block_idx, void* superblock_ptr) {
     superblock_t* sb;
-    if (fs_get_and_lock_block(0, sb)) {
-        return -1;
+    if (superblock_ptr == NULL) {
+        if (fs_get_and_lock_block(0, sb)) {
+            return -1;
+        }
+    } else {
+        sb = (superblock_t*)superblock_ptr;
     }
     char* bb;
     
     uint32_t block_num = block_idx - sb->data_blocks_index;
     uint32_t block_part_num = block_num / (DATA_BLOCKS / BITMAP_BLOCKS);
     if(fs_get_and_lock_block(1 + INODE_BLOCKS + block_part_num, bb)) {
-        fs_release_block(0, 0);
+        if (superblock_ptr == NULL) {
+            fs_release_block(0, 0);
+        }
         return -1;
     }
     uint32_t byte_idx = (block_num - block_part_num * (DATA_BLOCKS / BITMAP_BLOCKS)) / 8;
@@ -188,11 +210,15 @@ int fs_deallocate_block(int block_idx) {
         bb[byte_idx] &= ~(1 << bit_idx); // mark it as free
         sb->n_free_blocks++;
         fs_release_block(sb->bb_index + block_part_num, 1);
-        fs_release_block(0, 1);
+        if (superblock_ptr == NULL) {
+            fs_release_block(0, 1);
+        }
         return 0;
     } else {
         fs_release_block(sb->bb_index + block_part_num, 0);
-        fs_release_block(0, 0);
+        if (superblock_ptr == NULL) {
+            fs_release_block(0, 0);
+        }
         return -1; // block was already free
     }
 }
@@ -323,7 +349,7 @@ inode_t* get_parent_dir_inode(const char* path){
     uint32_t path_idx = 1;
     inode_t* curr_dir;
     uint32_t curr_inode_block_idx = 1 + (sb->inode_index / INODES_PER_BLOCK);
-    if (fs_get_inode(sb->inode_index, curr_dir, sb) == 0){
+    if (fs_get_and_lock_inode(sb->inode_index, curr_dir, sb) == 0){
         fs_release_block(0, 0);
         return NULL;
     }
@@ -363,7 +389,7 @@ inode_t* get_parent_dir_inode(const char* path){
         parent_dir = curr_dir;
         par_inode_block_idx = curr_inode_block_idx;
         curr_inode_block_idx = 1 + (dir_entry->inode_index / INODES_PER_BLOCK);
-        if (fs_get_inode(dir_entry->inode_index, curr_dir, sb) != 0) {
+        if (fs_get_and_lock_inode(dir_entry->inode_index, curr_dir, sb) != 0) {
             if (parent_dir != NULL) {
                 fs_release_block(par_inode_block_idx, 0);
             }
@@ -589,7 +615,7 @@ int create_or_mkdir(const char* path) {
     inode_t* new_inode;
     for (int i = 0; i < MAX_INODES; i++)
     {
-        if(fs_get_inode(i, new_inode, sb)){
+        if(fs_get_and_lock_inode(i, new_inode, sb)){
             continue; // inode is used, skip
         }
         if (new_inode->type == FILE_TYPE_UNUSED) {
@@ -758,78 +784,84 @@ int create_or_mkdir(const char* path) {
 }
 
 // -------------------------------- exposed functions --------------------------------//
-int fs_init(void* fs_start, uint32_t fs_size) {
-    //
-    __asm__ volatile ("cli");
-    fs_ptr = fs_start;
-    if (fs_start == NULL || fs_size != FS_SIZE) {
-        __asm__ volatile ("sti");
-        return -1;
-    }
-    int err = ide_read_sectors(DRIVE_NUM, 0, 1, DS, (uint32_t)fs_start);
-    if (err != 0){
-        printk("ERROR: Failed to read filesystem from disk code: %d\n", err);
-        return -1;
-    }
-    superblock_t* sb = (superblock_t*)fs_start;
-    if (sb->magic_number == MAGIC_NUMBER) {
-        printk("Filesystem found, reading in existing filesystem\n");
-        int num_sectors_to_read = FS_SIZE / 512;
-        err = ide_read_sectors(DRIVE_NUM, 0, num_sectors_to_read, DS, (uint32_t)fs_start);
-        if (err != 0){
-            printk("ERROR: Failed to read filesystem from disk code: %d\n", err);
-            return -1;
-        }
-        __asm__ volatile ("sti");
-        return 0;
-    }
-    printk("Initializing new filesystem\n");
-    sb->n_free_blocks = DATA_BLOCKS;
-    sb->n_free_inodes = MAX_INODES;
-    // Initialize inodes
-    inode_t* inodes = (inode_t*)((uint8_t*)fs_start + BLOCK_SIZE); // inodes start after superblock
-    for (uint32_t i = 0; i < MAX_INODES; i++)
-    {
-        inodes[i].type = FILE_TYPE_UNUSED; // default type
-        inodes[i].size = 0;
-        for (int j = 0; j < N_DIRECT_POINTERS; j++) {
-            inodes[i].location.direct_pointers[j] = 0;
-        }
-        for (int j = 0; j < N_INDIRECT_POINTERS; j++) {
-            inodes[i].location.indirect_pointer[j] = 0;
-        }
-        for (int j = 0; j < N_DOUBLE_INDIRECT_POINTERS; j++) {
-            inodes[i].location.double_indirect_pointer[j] = 0;
-        }
-    }
-    // Initialize block bitmap
-    block_bitmap_t* bb = (block_bitmap_t*)((uint8_t*)inodes + INODE_BLOCKS * BLOCK_SIZE);
-    memset(bb->bitmap, 0, sizeof(bb->bitmap));
-    // setup root directory
-    inodes[0].type = FILE_TYPE_DIRECTORY;
-    inodes[0].idx = 0;
-    inodes[0].size = 0;
-    inodes[0].location.direct_pointers[0] = fs_allocate_block();
-    if (inodes[0].location.direct_pointers[0] == NULL) {
-        __asm__ volatile ("sti");
-        return -1; // failed to allocate block for root directory
-    }
-    inodes[0].size += sizeof(dir_entry_t);
-    sb->n_free_inodes--;
-    dir_entry_t* root_dir = (dir_entry_t*)inodes[0].location.direct_pointers[0];
-    root_dir[0].filename[0] = '.';
-    root_dir[0].inode_index = 0;
-    root_dir[0].filename[1] = '\0'; // end of entries
-    sb->root_inode_index = 0;
-    sb->inodes_start = (void*)inodes;
-    sb->block_bitmap_start = (void*)bb;
-    sb->data_blocks_start = (void*)(sb->block_bitmap_start + BLOCK_BITMAP_BLOCKS * BLOCK_SIZE);
-    // __asm__ volatile ("sti");
-    return 0;
+int fs_init(int drive_num) {
+
+    // first, init the caches:
+    superblock_cache = lru_cache_init(1, (uint32_t)drive_num);
+    inode_cache = lru_cache_init(MAX_INODES, (uint32_t)drive_num);
+    bitmap_cache = lru_cache_init(BITMAP_BLOCKS, (uint32_t)drive_num);
+    data_block_cache = lru_cache_init(DATA_BLOCKS, (uint32_t)drive_num);
+
+    // __asm__ volatile ("cli");
+    // fs_ptr = fs_start;
+    // if (fs_start == NULL || fs_size != FS_SIZE) {
+    //     __asm__ volatile ("sti");
+    //     return -1;
+    // }
+    // int err = ide_read_sectors(DRIVE_NUM, 0, 1, DS, (uint32_t)fs_start);
+    // if (err != 0){
+    //     printk("ERROR: Failed to read filesystem from disk code: %d\n", err);
+    //     return -1;
+    // }
+    // superblock_t* sb = (superblock_t*)fs_start;
+    // if (sb->magic_number == MAGIC_NUMBER) {
+    //     printk("Filesystem found, reading in existing filesystem\n");
+    //     int num_sectors_to_read = FS_SIZE / 512;
+    //     err = ide_read_sectors(DRIVE_NUM, 0, num_sectors_to_read, DS, (uint32_t)fs_start);
+    //     if (err != 0){
+    //         printk("ERROR: Failed to read filesystem from disk code: %d\n", err);
+    //         return -1;
+    //     }
+    //     __asm__ volatile ("sti");
+    //     return 0;
+    // }
+    // printk("Initializing new filesystem\n");
+    // sb->n_free_blocks = DATA_BLOCKS;
+    // sb->n_free_inodes = MAX_INODES;
+    // // Initialize inodes
+    // inode_t* inodes = (inode_t*)((uint8_t*)fs_start + BLOCK_SIZE); // inodes start after superblock
+    // for (uint32_t i = 0; i < MAX_INODES; i++)
+    // {
+    //     inodes[i].type = FILE_TYPE_UNUSED; // default type
+    //     inodes[i].size = 0;
+    //     for (int j = 0; j < N_DIRECT_POINTERS; j++) {
+    //         inodes[i].location.direct_pointers[j] = 0;
+    //     }
+    //     for (int j = 0; j < N_INDIRECT_POINTERS; j++) {
+    //         inodes[i].location.indirect_pointer[j] = 0;
+    //     }
+    //     for (int j = 0; j < N_DOUBLE_INDIRECT_POINTERS; j++) {
+    //         inodes[i].location.double_indirect_pointer[j] = 0;
+    //     }
+    // }
+    // // Initialize block bitmap
+    // block_bitmap_t* bb = (block_bitmap_t*)((uint8_t*)inodes + INODE_BLOCKS * BLOCK_SIZE);
+    // memset(bb->bitmap, 0, sizeof(bb->bitmap));
+    // // setup root directory
+    // inodes[0].type = FILE_TYPE_DIRECTORY;
+    // inodes[0].idx = 0;
+    // inodes[0].size = 0;
+    // inodes[0].location.direct_pointers[0] = fs_allocate_block();
+    // if (inodes[0].location.direct_pointers[0] == NULL) {
+    //     __asm__ volatile ("sti");
+    //     return -1; // failed to allocate block for root directory
+    // }
+    // inodes[0].size += sizeof(dir_entry_t);
+    // sb->n_free_inodes--;
+    // dir_entry_t* root_dir = (dir_entry_t*)inodes[0].location.direct_pointers[0];
+    // root_dir[0].filename[0] = '.';
+    // root_dir[0].inode_index = 0;
+    // root_dir[0].filename[1] = '\0'; // end of entries
+    // sb->root_inode_index = 0;
+    // sb->inodes_start = (void*)inodes;
+    // sb->block_bitmap_start = (void*)bb;
+    // sb->data_blocks_start = (void*)(sb->block_bitmap_start + BLOCK_BITMAP_BLOCKS * BLOCK_SIZE);
+    // // __asm__ volatile ("sti");
+    // return 0;
 
 }
 
-
+/*
 int fs_create(const char* path) {
     if (path == NULL) {
         return -1;
@@ -1320,7 +1352,7 @@ int fs_unlink(const char *path) {
             }
         }
     }
-    strncpy(dir_entry->filename, last_entry->filename, MAX_FILENAME_LEN);
+    strncpy(dir_entry->filename, last_entry->filename, MAX_FILENAME_LEN); //TODO: this needs to be fixed, read_dir_entry does not lock the block
     dir_entry->inode_index = last_entry->inode_index;
     memset(last_entry, 0, sizeof(dir_entry_t));
     parent_dir->num_accessed--;
@@ -1378,3 +1410,4 @@ int fs_readdir(int fd, char *buf) {
         return 1;
     }
 }
+    */

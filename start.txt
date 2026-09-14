@@ -6,8 +6,7 @@
         ii. 1
         iii.(enter)
         iv. (enter)
-    b. a 
-        i. 1
+    b. a
     c. w
 4. sudo losetup -f os.img
 5. sudo losetup -f os.img -o 1048576

@@ -2,6 +2,7 @@
 
 channel_t channels[2]; // 0: primary channel, 1: secondary channel
 ide_device_t ide_devices[4]; // 0: primary master, 1: primary slave, 2: secondary master, 3: secondary slave
+int initialized = 0; // flag to indicate if ide has been initialized, should be set to 1 at the end of ide_initialize
 
 uint8_t ide_buf[2048] = {0};
 volatile unsigned static char ide_irq_invoked = 0;
@@ -251,6 +252,9 @@ uint8_t ide_ata_access(uint8_t direction, uint8_t drive, uint32_t lba, uint8_t n
 // @param BAR3 Base Address Register 3
 // @param BAR4 Base Address Register 4
 void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4) {
+    if (initialized) {
+        return; // already initialized, do nothing
+    }
     int i,j, k, count = 0;
     char int_buf[10];
 
@@ -354,6 +358,7 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, 
             terminal_writestring("\n");
         }
     }
+    initialized = 1;
 }
 // Read sectors from the specified drive
 // @param drive Drive number (0-3)

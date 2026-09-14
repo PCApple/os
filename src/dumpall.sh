@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # List of object files
-OBJS="asm/boot.o init.o mem.o fs.o print.o asm/int_table.o int.o io.o pic.o pit.o asm/cxt_switch.o thread.o scheduler.o test_funcs.o heap.o ide.o gdt.o asm/lgdt.o utils.o"
+OBJS="asm/boot.o init.o mem.o print.o asm/int_table.o int.o pic.o pit.o asm/cxt_switch.o thread.o scheduler.o heap.o ide.o gdt.o asm/lgdt.o utils.o tests.o block_cache.o
+PROGS = casos" 
 
 # Output directory (optional)
 OUTDIR="./dissasm"
