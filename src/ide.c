@@ -1,4 +1,6 @@
 #include "include/ide.h"
+#include "include/print.h"
+#include "include/io.h"
 
 channel_t channels[2]; // 0: primary channel, 1: secondary channel
 ide_device_t ide_devices[4]; // 0: primary master, 1: primary slave, 2: secondary master, 3: secondary slave
@@ -203,6 +205,7 @@ uint8_t ide_ata_access(uint8_t direction, uint8_t drive, uint32_t lba, uint8_t n
         ide_write(channel, ATA_REG_LBA5, lba_io[5]);
         ide_400ns(channel);
     }
+    ide_write(channel, ATA_REG_SECCOUNT0, numsects);
     ide_write(channel, ATA_REG_LBA0, lba_io[0]);
     ide_400ns(channel);
     ide_write(channel, ATA_REG_LBA1, lba_io[1]);
@@ -219,26 +222,23 @@ uint8_t ide_ata_access(uint8_t direction, uint8_t drive, uint32_t lba, uint8_t n
             for (int i = 0; i < numsects; i++) {
                 if ((err = ide_polling(channel, 1)))
                     return err;
-                __asm__ volatile("pushw %ds");
-                __asm__ volatile("mov %%ax, %%ds": : "a" (selector));
-                __asm__ volatile("rep insw": : "c" (words), "d" (bus), "D" (edi));
-                __asm__ volatile("popw %ds");
+                uint32_t address = edi, count = words;
+                __asm__ volatile("push %%es; mov %w3, %%es; cld; rep insw; pop %%es"
+                    : "+D" (address), "+c" (count)
+                    : "d" (bus), "r" (selector) : "memory", "cc");
                 edi += words * 2;
             }
         } else { // write
             for (int i = 0; i < numsects; i++) {
-                if ((err = ide_polling(channel, 0)))
+                if ((err = ide_polling(channel, 1)))
                     return err;
-                __asm__ volatile("pushw %ds");
-                __asm__ volatile("mov %%ax, %%ds": : "a" (selector));
-                __asm__ volatile("rep outsw": : "c" (words), "d" (bus), "S" (edi));
-                __asm__ volatile("popw %ds");
+                uint32_t address = edi, count = words;
+                __asm__ volatile("push %%ds; mov %w3, %%ds; cld; rep outsw; pop %%ds"
+                    : "+S" (address), "+c" (count)
+                    : "d" (bus), "r" (selector) : "memory", "cc");
                 edi += words * 2;
             }
-            ide_write(channel, ATA_REG_COMMAND, (char []) {   ATA_CMD_CACHE_FLUSH,
-                        ATA_CMD_CACHE_FLUSH,
-                        ATA_CMD_CACHE_FLUSH_EXT}[lba_mode]);
-            ide_polling(channel, 0); // Polling.
+            return ide_flush(drive);
         }
 
     }
@@ -411,3 +411,17 @@ uint8_t ide_write_sectors(uint8_t drive, uint32_t lba, uint8_t numsects, uint16_
     }
 }
 
+
+/* Flush the selected ATA device and check completion without requiring DRQ. */
+uint8_t ide_flush(uint8_t drive) {
+    if (drive == 0) return 4;
+    if (drive > 3 || !ide_devices[drive].Reserved) return 1;
+    if (ide_devices[drive].Type != IDE_ATA) return 3;
+    uint8_t channel = ide_devices[drive].Channel;
+    ide_polling(channel, 0);
+    ide_write(channel, ATA_REG_HDDEVSEL, 0xE0 | (ide_devices[drive].Drive << 4));
+    ide_400ns(channel);
+    ide_write(channel, ATA_REG_COMMAND, ATA_CMD_CACHE_FLUSH);
+    ide_polling(channel, 0);
+    return (ide_read(channel, ATA_REG_STATUS) & (ATA_SR_ERR | ATA_SR_DF)) ? 2 : 0;
+}

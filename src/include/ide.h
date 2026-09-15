@@ -1,8 +1,6 @@
 #ifndef IDE_H
 #define IDE_H
 #include <stdint.h>
-#include "print.h"
-#include "io.h"
 
 //ATA Command/Status Port bit mask
 #define ATA_SR_BSY     0x80    // Busy
@@ -114,6 +112,10 @@ typedef struct ide_device {
    unsigned int   Size;        // Size in Sectors.
    unsigned char  Model[41];   // Model in string.
 }ide_device_t;
+
+extern ide_device_t ide_devices[4];
+
+uint8_t ide_flush(uint8_t drive);
 
 void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4);
 uint8_t ide_read_sectors(uint8_t drive, uint32_t lba, uint8_t numsects, uint16_t es, uint32_t edi);
