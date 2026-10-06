@@ -39,6 +39,69 @@ int bitmap_set(uint32_t block_num, uint32_t block_bitmap_start, int set)
 
     return 0;
 }
+dir_entry_t* fs_lookup_dir_entry(const char *path) {
+    return NULL; // placeholder implementation
+
+}
+inode_t *fs_lookup_parent(const char *path) {
+    inode_t *parent_inode = NULL;
+    cache_block_t *sb_block = cache_get(0);
+    if (!sb_block) {
+        return NULL;
+    }
+    superblock_t *sb = (superblock_t *)sb_block->data;
+    uint32_t inode_start = sb->inode_start;
+    uint32_t root_inode = sb->root_inode;
+    cache_release(sb_block);
+    uint32_t path_len = strlen(path);
+    if (path_len == 0) {
+        return NULL; // empty path
+    }
+    if (path[path_len - 1] == '/') {
+        return NULL; // path ends with a slash, invalid for file creation
+    }
+    uint32_t path_idx = 1;
+    cache_block_t *current_inode_block = cache_get(inode_start);
+    if (!current_inode_block) {
+        return NULL;
+    }
+    inode_t *inodes = (inode_t *)(current_inode_block->data);
+    inode_t* current_inode = &inodes[root_inode];
+    char name[MAX_FILENAME_LEN+1];
+    while (path_idx < path_len) {
+        if (current_inode->type != FILE_TYPE_DIRECTORY) {
+            cache_release(current_inode_block);
+            return NULL;
+        }
+        uint32_t name_idx = 0;
+        while (path_idx < path_len && path[path_idx] != '/') {
+            name[name_idx++] = path[path_idx++];
+        }
+        name[name_idx] = '\0'; // null-terminate the filename
+        dir_entry_t *entry = fs_lookup_dir_entry(name);
+        if (!entry) {
+            cache_release(current_inode_block);
+            return NULL;
+        }
+        current_inode = &inodes[entry->inode_index];
+        parent_inode = current_inode;
+        cache_release(current_inode_block);
+        current_inode_block = cache_get(inode_start + entry->inode_index / INODES_PER_BLOCK);
+        if (!current_inode_block) {
+            return NULL;
+        }
+        inodes = (inode_t *)(current_inode_block->data);
+    }
+    cache_release(current_inode_block);
+    if (!parent_inode) {
+        return NULL;
+    }
+    // return the parent inode of the last component in the path
+    if (current_inode == parent_inode) {
+        return NULL; // the last component is the same as the parent, meaning no parent exists
+    }
+    return parent_inode;
+}
 //Filesystem lifecycle
 
 
@@ -56,7 +119,6 @@ int bitmap_set(uint32_t block_num, uint32_t block_bitmap_start, int set)
         if (drive_num < 1) {
             return -1; // invalid drive number
         }
-        if (drive_num > 3)
 
         cache_init(drive_num);
         cache_block_t *superblock = cache_get(0); // load the superblock into the cache
@@ -83,6 +145,10 @@ int bitmap_set(uint32_t block_num, uint32_t block_bitmap_start, int set)
     }
 
 int fs_format(int drive_num) {
+
+    if (drive_num < 1 || drive_num > 3) {
+        return -1; // invalid drive number
+    }
     disk_info_t info;
     if (disk_get_info(drive_num, &info) != DISK_OK) {
         return -1;
@@ -216,8 +282,8 @@ int fs_format(int drive_num) {
 }
 
 int fs_flush(void) {
+    cache_flush_all();
     return 0;
-
 }
 
 
@@ -226,8 +292,17 @@ int fs_flush(void) {
  * ========================================================= */
 
 int fs_create(const char *path) {
-    return 0;
-
+    if (!path || path[0] != '/') {
+        return -1; // invalid path
+    }
+    uint32_t path_len = strlen(path);
+    if (path_len == 0) {
+        return -1; // empty path
+    }
+    if (path[path_len - 1] == '/') {
+        return -1; // path ends with a slash, invalid for file creation
+    }
+    inode_t *parent_inode = fs_lookup_parent(path);
 }
 
 int fs_open(const char *path) {

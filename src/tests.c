@@ -37,21 +37,32 @@ static cache_block_t *get_sector(uint32_t scratch_start, unsigned index) {
     return cache_get(scratch_start + index);
 }
 
-/* Flush pending writes, fill all slots, then release them to leave an empty cache.
- * Reuses the existing allocation instead of calling cache_init again.
+/* Flush and invalidate every slot without allocating another cache.
+ * Release keeps entries present, and there is no public invalidation API yet.
+ * Reading 2 * CACHE_SIZE distinct sectors guarantees at least CACHE_SIZE
+ * misses (or visits every initially present entry), so every slot is collected.
+ * Only clear the flags after collecting slots: clearing sooner would keep
+ * reusing the same empty slot and leave other cached entries stale.
  */
-static void drain_cache(uint32_t scratch_start) {
-    cache_block_t *slots[CACHE_SIZE];
+static int drain_cache(uint32_t start) {
+    cache_block_t *slots[2 * CACHE_SIZE];
     cache_flush_all();
-    for (unsigned i = 0; i < CACHE_SIZE; ++i) slots[i] = get_sector(scratch_start, i);
-    for (unsigned i = 0; i < CACHE_SIZE; ++i)
-        if (slots[i]) cache_release(slots[i]);
+    for (unsigned i = 0; i < 2 * CACHE_SIZE; ++i) {
+        slots[i] = get_sector(start, i);
+        REQUIRE(slots[i]);
+        REQUIRE(!(slots[i]->flag_bits & DIRTY_FLAG));
+    }
+    for (unsigned i = 0; i < 2 * CACHE_SIZE; ++i) {
+        slots[i]->flag_bits = 0;
+        slots[i]->block_num = UINT32_MAX;
+    }
+    return 1;
 }
 
 /* Empty the cache, seed all scratch sectors and verify the writes directly through IDE. */
 static int prepare_disk(uint32_t scratch_start) {
     uint8_t sector_buffer[BLOCK_SIZE];
-    drain_cache(scratch_start);
+    REQUIRE(drain_cache(scratch_start));
     for (unsigned i = 0; i < DISK_TEST_BLOCKS; ++i) {
         fill_test_sector(sector_buffer, i, 0);
         if ((disk_write(CACHE_DRIVE, scratch_start + i, sector_buffer) != DISK_OK) ||
@@ -64,28 +75,36 @@ static int prepare_disk(uint32_t scratch_start) {
     return 1;
 }
 
-/* Check cached edits stay off disk until release, then verify direct reads and reload. */
+/* Release preserves dirty entries; an explicit flush persists and cleans them. */
 static int kernel_hit_release(void) {
     cache_block_t *b = get_sector(scratch_start, 0);
     REQUIRE(b && b->block_num == scratch_start && b->flag_bits == PRESENT_FLAG);
     REQUIRE(sector_matches(b->data, 0, 0));
     REQUIRE(get_sector(scratch_start, 0) == b);
+    cache_release(b);
+    REQUIRE(b->flag_bits == PRESENT_FLAG && b->block_num == scratch_start);
+    REQUIRE(get_sector(scratch_start, 0) == b);
     fill_test_sector(b->data, 0, 1);
     cache_mark_dirty(b);
     cache_mark_dirty(b);
     REQUIRE(b->flag_bits == (PRESENT_FLAG | DIRTY_FLAG));
+    cache_release(b);
+    cache_release(b);
+    REQUIRE(b->flag_bits == (PRESENT_FLAG | DIRTY_FLAG));
+    REQUIRE(b->block_num == scratch_start);
     REQUIRE(get_sector(scratch_start, 0) == b && sector_matches(b->data, 0, 1));
-    REQUIRE((disk_read(CACHE_DRIVE, scratch_start + 0, sector_buffer) == DISK_OK) && sector_matches(sector_buffer, 0, 0));
-    cache_release(b);
-    REQUIRE(b->flag_bits == 0 && b->block_num == UINT32_MAX);
-    REQUIRE((disk_read(CACHE_DRIVE, scratch_start + 0, sector_buffer) == DISK_OK) && sector_matches(sector_buffer, 0, 1));
+    REQUIRE(disk_read(CACHE_DRIVE, scratch_start, sector_buffer) == DISK_OK);
+    REQUIRE(sector_matches(sector_buffer, 0, 0));
+    cache_flush_all();
+    REQUIRE(b->flag_bits == PRESENT_FLAG);
+    REQUIRE(get_sector(scratch_start, 0) == b && sector_matches(b->data, 0, 1));
+    REQUIRE(disk_read(CACHE_DRIVE, scratch_start, sector_buffer) == DISK_OK);
+    REQUIRE(sector_matches(sector_buffer, 0, 1));
+    REQUIRE(drain_cache(scratch_start));
     b = get_sector(scratch_start, 0);
-    REQUIRE(b && sector_matches(b->data, 0, 1));
+    REQUIRE(b && b->flag_bits == PRESENT_FLAG && sector_matches(b->data, 0, 1));
     cache_release(b);
-    cache_mark_dirty(b);
-    cache_release(b);
-    REQUIRE(b->flag_bits == 0);
-    REQUIRE((disk_read(CACHE_DRIVE, scratch_start + 0, sector_buffer) == DISK_OK) && sector_matches(sector_buffer, 0, 1));
+    REQUIRE(get_sector(scratch_start, 0) == b && b->flag_bits == PRESENT_FLAG);
     return 1;
 }
 
@@ -113,6 +132,12 @@ static int kernel_flush(void) {
         REQUIRE(b && sector_matches(b->data, i, i % 2 == 0));
         cache_release(b);
     }
+    REQUIRE(drain_cache(scratch_start));
+    for (unsigned i = 0; i < CACHE_SIZE; ++i) {
+        cache_block_t *b = get_sector(scratch_start, i);
+        REQUIRE(b && b->flag_bits == PRESENT_FLAG);
+        REQUIRE(sector_matches(b->data, i, i % 2 == 0));
+    }
     return 1;
 }
 
@@ -139,7 +164,7 @@ static int kernel_eviction(void) {
     return 1;
 }
 
-/* Check slot reuse and clean eviction while verifying the disk contents remain intact. */
+/* Empty slots are distinct; released entries remain until round-robin eviction. */
 static int kernel_empty_slot(void) {
     cache_block_t *slots[CACHE_SIZE];
     for (unsigned i = 0; i < CACHE_SIZE; ++i) {
@@ -148,11 +173,20 @@ static int kernel_empty_slot(void) {
         for (unsigned j = 0; j < i; ++j) REQUIRE(slots[i] != slots[j]);
     }
     cache_release(slots[CACHE_SIZE / 2]);
-    REQUIRE(get_sector(scratch_start, CACHE_SIZE) == slots[CACHE_SIZE / 2]);
+    REQUIRE(slots[CACHE_SIZE / 2]->flag_bits == PRESENT_FLAG);
+    REQUIRE(get_sector(scratch_start, CACHE_SIZE / 2) == slots[CACHE_SIZE / 2]);
     REQUIRE(get_sector(scratch_start, 0) == slots[0]);
+    cache_block_t *first = get_sector(scratch_start, CACHE_SIZE);
+    REQUIRE(first && first->block_num == scratch_start + CACHE_SIZE);
+    REQUIRE(first->flag_bits == PRESENT_FLAG);
+    REQUIRE(sector_matches(first->data, CACHE_SIZE, 0));
+    unsigned victim = 0;
+    while (victim < CACHE_SIZE && slots[victim] != first) ++victim;
+    REQUIRE(victim < CACHE_SIZE);
     for (unsigned i = CACHE_SIZE + 1; i < DISK_TEST_BLOCKS; ++i) {
         cache_block_t *b = get_sector(scratch_start, i);
-        REQUIRE(b && b->block_num == scratch_start + i);
+        REQUIRE(b && b == slots[(victim + i - CACHE_SIZE) % CACHE_SIZE]);
+        REQUIRE(b->block_num == scratch_start + i && b->flag_bits == PRESENT_FLAG);
         REQUIRE(sector_matches(b->data, i, 0));
     }
     for (unsigned i = 0; i < DISK_TEST_BLOCKS; ++i)
@@ -176,10 +210,10 @@ static int kernel_disk_interface(void) {
 /* Back up the scratch range, run kernel tests, then restore and verify the original data. */
 void test_block_cache(void) {
     static const struct { const char *name; int (*run)(void); } cases[] = {
-        {"hit, dirty release and reload", kernel_hit_release},
+        {"hit, release retention, flush and reload", kernel_hit_release},
         {"mixed and repeated flush", kernel_flush},
         {"dirty eviction and wraparound", kernel_eviction},
-        {"empty slot and clean eviction", kernel_empty_slot},
+        {"empty slots, release retention and clean round-robin eviction", kernel_empty_slot},
         {"multi-sector disk interface", kernel_disk_interface},
     };
     disk_info_t info;
@@ -205,10 +239,9 @@ void test_block_cache(void) {
         failed += !passed;
     }
     /* Finish cache writes before restoring; leave no stale scratch entries. */
-    drain_cache(scratch_start);
-    unsigned restore_failed = 0;
+    unsigned restore_failed = !drain_cache(scratch_start);
     for (unsigned i = 0; i < DISK_TEST_BLOCKS; ++i) {
-        if ((disk_write(1, scratch_start + i, saved_sectors[i]) != DISK_OK) || (disk_read(CACHE_DRIVE, scratch_start + i, sector_buffer) != DISK_OK) ||
+        if ((disk_write(CACHE_DRIVE, scratch_start + i, saved_sectors[i]) != DISK_OK) || (disk_read(CACHE_DRIVE, scratch_start + i, sector_buffer) != DISK_OK) ||
             memcmp(saved_sectors[i], sector_buffer, BLOCK_SIZE) != 0)
             ++restore_failed;
     }
@@ -295,7 +328,7 @@ static int kernel_fs_init_repeat(void) {
  * Check format twice, and ensure the next ordinary data sector is untouched.
  */
 static int kernel_fs_format(void) {
-    drain_cache(0);
+    REQUIRE(drain_cache(0));
     fill_sector(sector_buffer, 0xa5);
     for (uint32_t block = 0; block < fs_backup_blocks; ++block)
         REQUIRE(disk_write(FS_TEST_DRIVE, block, sector_buffer) == DISK_OK);
@@ -332,8 +365,8 @@ void test_fs(void) {
     };
     disk_info_t info;
     if (disk_get_info(FS_TEST_DRIVE, &info) != DISK_OK || !info.writable ||
-        info.sector_size != BLOCK_SIZE) {
-        printk("Filesystem tests SKIPPED: writable ATA drive 1 is required.\n");
+        info.sector_size != BLOCK_SIZE || info.sector_count < 2 * CACHE_SIZE) {
+        printk("Filesystem tests SKIPPED: writable ATA drive 1 with at least 32 sectors is required.\n");
         return;
     }
 
@@ -365,7 +398,11 @@ void test_fs(void) {
         printk("Filesystem tests SKIPPED: could not allocate backup.\n");
         return;
     }
-    drain_cache(0);
+    if (!drain_cache(0)) {
+        printk("Filesystem tests ABORTED: cache cleanup failed.\n");
+        mem_kfree(backup);
+        return;
+    }
     for (uint32_t block = 0; block < fs_backup_blocks; ++block) {
         if (disk_read(FS_TEST_DRIVE, block, backup + block * BLOCK_SIZE) != DISK_OK) {
             printk("Filesystem tests ABORTED: backup read failed.\n");
@@ -387,9 +424,7 @@ void test_fs(void) {
     }
 
     /* Clear cached test data before restoring the original disk contents. */
-    cache_init(FS_TEST_DRIVE);
-    drain_cache(0);
-    unsigned restore_failed = 0;
+    unsigned restore_failed = !drain_cache(0);
     for (uint32_t block = 0; block < fs_backup_blocks; ++block) {
         uint8_t *saved = backup + block * BLOCK_SIZE;
         if (disk_write(FS_TEST_DRIVE, block, saved) != DISK_OK ||

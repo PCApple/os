@@ -24,8 +24,8 @@
         boot
     }
 13. cd ./src
-from here, you only need to run:
-./build to build the os and copy it to the disk
-./run to run the os
+from here, return to the repository root with cd .., then run:
+./build.sh to build the os and copy it to the disk
+./run.sh to run the os
 
     

@@ -1,15 +1,30 @@
 CC = gcc
 CFLAGS = -m32 -ffreestanding -fno-builtin -fno-stack-protector -fno-strict-aliasing -fno-delete-null-pointer-checks -I. -g -Wall -std=c99
 CPPFLAGS = -Wa,--32 -MMD
-# Lifecycle tests use fs.o; legacy filesystem tests remain excluded.
-OBJS = asm/boot.o init.o mem.o print.o strings.o asm/int_table.o int.o pic.o pit.o asm/cxt_switch.o thread.o scheduler.o heap.o ide.o gdt.o asm/lgdt.o utils.o tests.o block_cache.o disk.o fs.o
-PROGS = casos
+include sources.mk
+OBJS = $(ASM_SOURCES:.S=.o) $(C_SOURCES:.c=.o)
+DEPS = $(OBJS:.o=.d)
+OBJDUMP ?= objdump
+PROGS = ../casos
 MNT_POINT=/mnt/C
 
 all: $(PROGS)
 
-casos: $(OBJS)
-	$(LD) -m elf_i386 -T casos.ld -o $@ $^
+casos: $(PROGS)
+
+$(PROGS): $(OBJS) Makefile sources.mk casos.ld
+	$(LD) -m elf_i386 -T casos.ld -o $@ $(OBJS)
+
+# Share the build's source list; preserve directories to avoid name collisions.
+disassemble: $(PROGS)
+	rm -rf -- dissasm
+	@set -e; for obj in $(OBJS) $(PROGS); do \
+		output="dissasm/$${obj#../}"; \
+		output="$${output%.o}.txt"; \
+		mkdir -p "$$(dirname "$$output")"; \
+		$(OBJDUMP) -d -s "$$obj" > "$$output"; \
+		echo "Disassembled $$obj -> $$output"; \
+	done
 
 %: %.c
 
@@ -18,10 +33,12 @@ install: $(PROGS)
 	sync
 
 clean:
-	-rm *.o *.d $(PROGS) *~
+	find . -type f \( -name '*.o' -o -name '*.d' -o -name '*~' \) -delete
+	rm -f -- $(PROGS) casos
+	rm -rf -- dissasm
 
--include *.d
+-include $(DEPS)
 
-.PHONY: test
+.PHONY: all casos install clean disassemble test
 test:
 	$(MAKE) -C ../tests test
