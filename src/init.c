@@ -38,10 +38,11 @@ void init(unsigned int magic_num, multiboot_info_t* binfo) {
   printk("Thread system initialized\n");
   scheduler_init();
   printk("Scheduler initialized\n");
-  cache_init();
+  cache_init(1);
   printk("Block cache initialized\n");
   printk("Starting tests...\n");
-  test_block_cache();
+  //test_block_cache();
+  test_fs();
   printk("Tests completed.\n");
 
   

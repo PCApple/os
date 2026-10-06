@@ -1,4 +1,5 @@
 #include "include/test_funcs.h"
+#include "include/strings.h"
 #include "include/mem.h"
 
 

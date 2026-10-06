@@ -1,1 +1,1 @@
-mount disk.img /mnt/C -text2 -o loop,offset=32256
+mount disk.img /mnt/C -text2 -o loop,offset=32256   

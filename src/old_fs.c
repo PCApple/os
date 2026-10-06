@@ -1,4 +1,5 @@
 #include "include/fs.h"
+#include "include/strings.h"
 #include "include/lru_cache.h"
 
 

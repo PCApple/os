@@ -1,4 +1,5 @@
 #include "include/scheduler.h"
+#include "include/strings.h"
 scheduler_t scheduler;
 tcb_t * tcb_array;
 uint32_t tcb_count;

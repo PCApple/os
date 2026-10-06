@@ -1,9 +1,9 @@
 #include "include/block_cache.h"
-#include "include/disk.h"
-#include "include/mem.h"
+
 
 static uint32_t next_evict_index;
 static cache_block_t *cache;
+static uint8_t drive_number;
 
 cache_block_t *cache_get(uint32_t block_num){
     for (int i = 0; i < CACHE_SIZE; i++) {
@@ -17,7 +17,7 @@ cache_block_t *cache_get(uint32_t block_num){
             cache[i].block_num = block_num;
             cache[i].flag_bits = PRESENT_FLAG; // mark as present, not dirty, not locked
             // read block from disk into cache
-            if (disk_read(CACHE_DRIVE, block_num, cache[i].data) != DISK_OK) {
+            if (disk_read(drive_number, block_num, cache[i].data) != DISK_OK) {
                 cache[i].flag_bits = 0;
                 return NULL;
             }
@@ -26,13 +26,13 @@ cache_block_t *cache_get(uint32_t block_num){
     }
     // no empty slot, evict next block (round robin policy)
     if (cache[next_evict_index].flag_bits & DIRTY_FLAG) {
-        if (disk_write(CACHE_DRIVE, cache[next_evict_index].block_num,
+        if (disk_write(drive_number, cache[next_evict_index].block_num,
                        cache[next_evict_index].data) != DISK_OK) return NULL;
     }
     cache[next_evict_index].block_num = block_num;
     cache[next_evict_index].flag_bits = PRESENT_FLAG; // mark as present, not dirty, not locked
     // read block from disk into cache
-    if (disk_read(CACHE_DRIVE, block_num, cache[next_evict_index].data) != DISK_OK) {
+    if (disk_read(drive_number, block_num, cache[next_evict_index].data) != DISK_OK) {
         cache[next_evict_index].flag_bits = 0;
         return NULL;
     }
@@ -46,22 +46,19 @@ void cache_mark_dirty(cache_block_t *block){
     }
 }
 void cache_release(cache_block_t *block){
-    if (block->flag_bits & DIRTY_FLAG) {
-        if (disk_write(CACHE_DRIVE, block->block_num, block->data) != DISK_OK) return;
-    }
-    block->flag_bits = 0;
-    block->block_num = 0xFFFFFFFF; // mark as invalid
+    // nop right now, need to add logic to have proper locking and mult readers and one writer
 }
 void cache_flush_all(void){
     for (int i = 0; i < CACHE_SIZE; i++) {
-        if (cache[i].flag_bits & DIRTY_FLAG) {
-            if (disk_write(CACHE_DRIVE, cache[i].block_num, cache[i].data) != DISK_OK) continue;
+        if (cache[i].flag_bits & DIRTY_FLAG && cache[i].flag_bits & PRESENT_FLAG) {
+            if (disk_write(drive_number, cache[i].block_num, cache[i].data) != DISK_OK) continue;
             cache[i].flag_bits &= ~DIRTY_FLAG; // clear dirty flag
         }
     }
 
 }
-void cache_init(void){
+void cache_init(uint8_t drive_num){
+    drive_number = drive_num;
     cache = (cache_block_t*)mem_kalloc(sizeof(cache_block_t) * CACHE_SIZE);
     memset(cache, 0, sizeof(cache_block_t) * CACHE_SIZE);
     next_evict_index = 0;

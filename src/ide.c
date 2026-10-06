@@ -1,4 +1,5 @@
 #include "include/ide.h"
+#include "include/strings.h"
 #include "include/print.h"
 #include "include/io.h"
 

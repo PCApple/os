@@ -1,219 +1,6 @@
-#ifdef BLOCK_CACHE_HOST_TEST
-#include "../tests/host.h"
 
-#define CHECK(condition) do { if (!(condition)) { \
-    printf("  FAIL line %d: %s\n", __LINE__, #condition); return 0; \
-} } while (0)
-
-/* Generate repeatable data that varies by block and byte offset. */
-static uint8_t pattern(unsigned block, unsigned byte) {
-    return (uint8_t)(block * 37 + byte * 13 + byte / 256);
-}
-
-/* Reset the host cache, I/O counters and fake disk before each test. */
-static void reset_fixture(void) {
-    cache_init();
-    test_reads = test_writes = 0;
-    for (unsigned i = 0; i < TEST_BLOCKS; ++i)
-        for (unsigned j = 0; j < BLOCK_SIZE; ++j)
-            test_disk[i][j] = pattern(i, j);
-}
-
-/* Return true when a clean, present cache entry matches the requested disk block. */
-static int matches(cache_block_t *block, unsigned number) {
-    return block && block->block_num == number &&
-        block->flag_bits == PRESENT_FLAG &&
-        memcmp(block->data, test_disk[number], BLOCK_SIZE) == 0;
-}
-
-/* Check that the first access reads disk and a repeated access reuses the entry. */
-static int cold_read_and_hit(void) {
-    cache_block_t *b = cache_get(0);
-    CHECK(matches(b, 0));
-    CHECK(cache_get(0) == b);
-    CHECK(test_reads == 1 && test_writes == 0);
-    return 1;
-}
-
-/* Fill every slot, then check round-robin eviction without unnecessary writes. */
-static int capacity_and_clean_eviction(void) {
-    cache_block_t *slots[CACHE_SIZE];
-    for (unsigned i = 0; i < CACHE_SIZE; ++i) {
-        slots[i] = cache_get(i);
-        CHECK(matches(slots[i], i));
-        for (unsigned j = 0; j < i; ++j) CHECK(slots[i] != slots[j]);
-    }
-    CHECK(cache_get(0) == slots[0]);
-    CHECK(cache_get(CACHE_SIZE) == slots[0]);
-    CHECK(matches(slots[0], CACHE_SIZE));
-    CHECK(test_reads == CACHE_SIZE + 1 && test_writes == 0);
-    return 1;
-}
-
-/* Check dirty hits and repeated marking, then verify release writes data for reload. */
-static int dirty_hit_and_release(void) {
-    cache_block_t *b = cache_get(2);
-    memset(b->data, 0xa5, BLOCK_SIZE);
-    cache_mark_dirty(b);
-    cache_mark_dirty(b);
-    CHECK(b->flag_bits == (PRESENT_FLAG | DIRTY_FLAG));
-    CHECK(cache_get(2) == b && b->data[BLOCK_SIZE - 1] == 0xa5);
-    CHECK(test_reads == 1 && test_writes == 0);
-    cache_release(b);
-    CHECK(b->flag_bits == 0 && b->block_num == UINT32_MAX);
-    CHECK(test_writes == 1);
-    for (unsigned j = 0; j < BLOCK_SIZE; ++j) CHECK(test_disk[2][j] == 0xa5);
-    CHECK(matches(cache_get(2), 2));
-    CHECK(test_reads == 2);
-    return 1;
-}
-
-/* Verify clean/repeated release and marking an invalid entry cause no writes. */
-static int clean_release_and_invalid_dirty(void) {
-    cache_block_t *b = cache_get(1);
-    cache_release(b);
-    cache_mark_dirty(b);
-    cache_release(b);
-    CHECK(b->flag_bits == 0 && b->block_num == UINT32_MAX);
-    CHECK(test_writes == 0);
-    CHECK(matches(cache_get(1), 1));
-    CHECK(test_reads == 2);
-    return 1;
-}
-
-/* Flush mixed clean/dirty entries and verify flags, write counts and reloaded data. */
-static int flush_mixed_and_repeat(void) {
-    cache_block_t *slots[CACHE_SIZE];
-    for (unsigned i = 0; i < CACHE_SIZE; ++i) {
-        slots[i] = cache_get(i);
-        if (i % 2 == 0) {
-            for (unsigned j = 0; j < BLOCK_SIZE; ++j)
-                slots[i]->data[j] = (uint8_t)~pattern(i, j);
-            cache_mark_dirty(slots[i]);
-        }
-    }
-    cache_flush_all();
-    CHECK(test_writes == (CACHE_SIZE + 1) / 2);
-    for (unsigned i = 0; i < CACHE_SIZE; ++i) {
-        CHECK(cache_get(i) == slots[i] && matches(slots[i], i));
-        for (unsigned j = 0; j < BLOCK_SIZE; ++j)
-            CHECK(test_disk[i][j] == (i % 2 ? pattern(i, j) : (uint8_t)~pattern(i, j)));
-        cache_release(slots[i]);
-    }
-    cache_flush_all();
-    CHECK(test_writes == (CACHE_SIZE + 1) / 2 && test_reads == CACHE_SIZE);
-    for (unsigned i = 0; i < CACHE_SIZE; ++i) CHECK(matches(cache_get(i), i));
-    return 1;
-}
-
-/* Force several eviction cycles and verify every modified block reaches disk. */
-static int dirty_eviction_and_wraparound(void) {
-    for (unsigned i = 0; i < TEST_BLOCKS; ++i) {
-        cache_block_t *b = cache_get(i);
-        CHECK(matches(b, i));
-        memset(b->data, (uint8_t)(i + 1), BLOCK_SIZE);
-        cache_mark_dirty(b);
-    }
-    CHECK(test_writes == TEST_BLOCKS - CACHE_SIZE);
-    cache_flush_all();
-    CHECK(test_writes == TEST_BLOCKS);
-    for (unsigned i = 0; i < TEST_BLOCKS; ++i) {
-        CHECK(matches(cache_get(i), i));
-        for (unsigned j = 0; j < BLOCK_SIZE; ++j) CHECK(test_disk[i][j] == i + 1);
-    }
-    CHECK(test_writes == TEST_BLOCKS);
-    return 1;
-}
-
-/* Check that a released slot is reused before another cached block is evicted. */
-static int reuse_empty_slot(void) {
-    cache_block_t *first = cache_get(0);
-    for (unsigned i = 1; i < CACHE_SIZE; ++i) CHECK(matches(cache_get(i), i));
-    cache_block_t *hole = cache_get(CACHE_SIZE / 2);
-    cache_release(hole);
-    CHECK(cache_get(CACHE_SIZE) == hole);
-    CHECK(cache_get(0) == first && matches(first, 0));
-    CHECK(test_writes == 0);
-    return 1;
-}
-
-/* Verify repeated flushes of an empty cache perform no disk I/O. */
-static int empty_flush(void) {
-    cache_flush_all();
-    cache_flush_all();
-    CHECK(test_reads == 0 && test_writes == 0);
-    return 1;
-}
-
-/* Exercise the real disk interface with the in-memory IDE backend. */
-static int disk_interface(void) {
-    disk_info_t info;
-    CHECK(disk_get_info(CACHE_DRIVE, &info) == DISK_OK);
-    CHECK(info.available && info.writable && info.sector_count == TEST_BLOCKS);
-    CHECK(info.sector_size == BLOCK_SIZE);
-    CHECK(disk_get_info(4, &info) == DISK_ERR_NO_DEVICE);
-    CHECK(!info.available);
-    CHECK(disk_get_info(CACHE_DRIVE, NULL) == DISK_ERR_ARGUMENT);
-    fill_sector(test_io, 0xa5);
-    fill_sector(test_io + BLOCK_SIZE, 0x5a);
-    CHECK(disk_write_sectors(CACHE_DRIVE, 1, 2, test_io) == DISK_OK);
-    memset(test_io, 0, 2 * BLOCK_SIZE);
-    CHECK(disk_read_sectors(CACHE_DRIVE, 1, 2, test_io) == DISK_OK);
-    for (unsigned i = 0; i < 2 * BLOCK_SIZE; ++i)
-        CHECK(test_io[i] == (i < BLOCK_SIZE ? 0xa5 : 0x5a));
-    CHECK(disk_read_sectors(CACHE_DRIVE, TEST_BLOCKS - 1, 2, test_io) == DISK_ERR_RANGE);
-    CHECK(disk_read_sectors(CACHE_DRIVE, UINT32_MAX, 2, test_io) == DISK_ERR_RANGE);
-    CHECK(disk_read_sectors(CACHE_DRIVE, 0, 0, test_io) == DISK_ERR_ARGUMENT);
-    CHECK(disk_read(CACHE_DRIVE, 0, NULL) == DISK_ERR_ARGUMENT);
-    CHECK(test_reads == 1 && test_writes == 1);
-    CHECK(disk_flush(CACHE_DRIVE) == DISK_OK);
-    test_io_error = 1;
-    disk_status_t read_error = disk_read(CACHE_DRIVE, 0, test_io);
-    disk_status_t write_error = disk_write(CACHE_DRIVE, 0, test_io);
-    disk_status_t flush_error = disk_flush(CACHE_DRIVE);
-    cache_block_t *failed_read = cache_get(0);
-    test_io_error = 0;
-    CHECK(failed_read == NULL);
-    cache_block_t *b = cache_get(0);
-    CHECK(b != NULL);
-    cache_mark_dirty(b);
-    test_io_error = 1;
-    cache_flush_all();
-    cache_release(b);
-    test_io_error = 0;
-    CHECK(b->flag_bits == (PRESENT_FLAG | DIRTY_FLAG));
-    cache_release(b);
-    CHECK(b->flag_bits == 0);
-    CHECK(read_error == DISK_ERR_IO && write_error == DISK_ERR_IO && flush_error == DISK_ERR_IO);
-    return 1;
-}
-
-/* Run each host scenario twice with fresh state; return failure if any check fails. */
-int main(void) {
-    static const struct { const char *name; int (*run)(void); } cases[] = {
-        {"cold read and cache hit", cold_read_and_hit},
-        {"capacity and clean eviction", capacity_and_clean_eviction},
-        {"dirty hit and release persistence", dirty_hit_and_release},
-        {"clean release and invalid dirty mark", clean_release_and_invalid_dirty},
-        {"mixed flush, repeat flush and reload", flush_mixed_and_repeat},
-        {"dirty eviction and multiple wraps", dirty_eviction_and_wraparound},
-        {"reuse empty slot before eviction", reuse_empty_slot},
-        {"empty flush", empty_flush},
-        {"disk interface", disk_interface},
-    };
-    unsigned failed = 0;
-    for (unsigned repeat = 0; repeat < 2; ++repeat)
-        for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
-            reset_fixture();
-            int passed = cases[i].run();
-            printf("%s: %s\n", passed ? "PASS" : "FAIL", cases[i].name);
-            failed += !passed;
-        }
-    printf("%u cases run; %u failed\n", (unsigned)(2 * sizeof(cases) / sizeof(cases[0])), failed);
-    return failed ? EXIT_FAILURE : EXIT_SUCCESS;
-}
-#else
 #include "include/tests.h"
+#include "include/fs.h"
 #include "include/disk.h"
 #include "include/utils.h"
 
@@ -221,6 +8,7 @@ int main(void) {
 static uint8_t saved_sectors[DISK_TEST_BLOCKS][BLOCK_SIZE];
 static uint8_t sector_buffer[BLOCK_SIZE];
 static uint32_t scratch_start;
+static uint32_t CACHE_DRIVE = 1;
 
 #define REQUIRE(condition) do { if (!(condition)) { \
     printk("FAIL line %d: %s\n", __LINE__, #condition); return 0; \
@@ -420,10 +208,196 @@ void test_block_cache(void) {
     drain_cache(scratch_start);
     unsigned restore_failed = 0;
     for (unsigned i = 0; i < DISK_TEST_BLOCKS; ++i) {
-        if ((disk_write(CACHE_DRIVE, scratch_start + i, saved_sectors[i]) != DISK_OK) || (disk_read(CACHE_DRIVE, scratch_start + i, sector_buffer) != DISK_OK) ||
+        if ((disk_write(1, scratch_start + i, saved_sectors[i]) != DISK_OK) || (disk_read(CACHE_DRIVE, scratch_start + i, sector_buffer) != DISK_OK) ||
             memcmp(saved_sectors[i], sector_buffer, BLOCK_SIZE) != 0)
             ++restore_failed;
     }
     printk("Disk cache tests: %d failed; restore errors: %d\n", failed, restore_failed);
 }
-#endif
+
+/* Filesystem tests run once per boot, before any other fs_init call.
+ * Formatting changes sectors 0 through data_start. Back up that range plus
+ * one ordinary data sector, and restore it even when a REQUIRE fails.
+ */
+#define FS_TEST_DRIVE 1
+#define FS_BACKUP_MAX_BLOCKS 4096 /* Limit the backup to 2 MiB. */
+static superblock_t expected_sb;
+static uint32_t fs_backup_blocks;
+
+/* Check the on-disk layout, including every bitmap bit and unused inode byte. */
+static int fs_layout_matches(void) {
+    REQUIRE(disk_read(FS_TEST_DRIVE, 0, sector_buffer) == DISK_OK);
+    REQUIRE(memcmp(sector_buffer, &expected_sb, BLOCK_SIZE) == 0);
+
+    for (unsigned kind = 0; kind < 2; ++kind) {
+        uint32_t start = kind ? expected_sb.inode_bitmap_start : expected_sb.block_bitmap_start;
+        uint32_t count = kind ? expected_sb.inode_bitmap_blocks : expected_sb.block_bitmap_blocks;
+        uint32_t limit = kind ? expected_sb.inode_count : expected_sb.total_blocks;
+        for (uint32_t block = 0; block < count; ++block) {
+            REQUIRE(disk_read(FS_TEST_DRIVE, start + block, sector_buffer) == DISK_OK);
+            for (uint32_t bit = 0; bit < BLOCK_SIZE * 8; ++bit) {
+                uint32_t index = block * BLOCK_SIZE * 8 + bit;
+                int used = index >= limit || (kind ? index == 0 : index <= expected_sb.data_start);
+                REQUIRE(((sector_buffer[bit / 8] >> (bit % 8)) & 1) == used);
+            }
+        }
+    }
+
+    uint8_t expected[BLOCK_SIZE];
+    for (uint32_t block = 0; block < expected_sb.inode_blocks; ++block) {
+        memset(expected, 0, BLOCK_SIZE);
+        if (block == 0) {
+            inode_t root = {0};
+            root.type = FILE_TYPE_DIRECTORY;
+            root.location.direct_pointers[0] = expected_sb.data_start;
+            root.size = 2 * sizeof(dir_entry_t);
+            memcpy(expected, &root, sizeof(root));
+        }
+        REQUIRE(disk_read(FS_TEST_DRIVE, expected_sb.inode_start + block, sector_buffer) == DISK_OK);
+        REQUIRE(memcmp(sector_buffer, expected, BLOCK_SIZE) == 0);
+    }
+
+    memset(expected, 0, BLOCK_SIZE);
+    dir_entry_t entries[2] = {0};
+    entries[0].filename[0] = '.';
+    entries[1].filename[0] = '.';
+    entries[1].filename[1] = '.';
+    /* Both entries point to inode 0; the remaining directory bytes stay zero. */
+    memcpy(expected, entries, sizeof(entries));
+    REQUIRE(disk_read(FS_TEST_DRIVE, expected_sb.data_start, sector_buffer) == DISK_OK);
+    REQUIRE(memcmp(sector_buffer, expected, BLOCK_SIZE) == 0);
+    return 1;
+}
+
+/* A failed init must allow retry; an invalid magic number must trigger format. */
+static int kernel_fs_init(void) {
+    REQUIRE(fs_init(4) == -1); /* IDE exposes only drives 0 through 3. */
+    fill_sector(sector_buffer, 0xa5);
+    REQUIRE(disk_write(FS_TEST_DRIVE, 0, sector_buffer) == DISK_OK);
+    REQUIRE(fs_init(FS_TEST_DRIVE) == 0);
+    return fs_layout_matches();
+}
+
+/* Repeated initialization must preserve existing contents rather than format again. */
+static int kernel_fs_init_repeat(void) {
+    uint8_t saved[BLOCK_SIZE];
+    REQUIRE(disk_read(FS_TEST_DRIVE, 0, saved) == DISK_OK);
+    saved[BLOCK_SIZE - 1] = 0x5a; /* Marker in the superblock's unused padding. */
+    REQUIRE(disk_write(FS_TEST_DRIVE, 0, saved) == DISK_OK);
+    REQUIRE(fs_init(FS_TEST_DRIVE) == 0);
+    REQUIRE(fs_init(FS_TEST_DRIVE) == 0);
+    REQUIRE(disk_read(FS_TEST_DRIVE, 0, sector_buffer) == DISK_OK);
+    REQUIRE(memcmp(sector_buffer, saved, BLOCK_SIZE) == 0);
+    return 1;
+}
+
+/* Start with nonzero metadata so missing clears cannot pass by accident.
+ * Check format twice, and ensure the next ordinary data sector is untouched.
+ */
+static int kernel_fs_format(void) {
+    drain_cache(0);
+    fill_sector(sector_buffer, 0xa5);
+    for (uint32_t block = 0; block < fs_backup_blocks; ++block)
+        REQUIRE(disk_write(FS_TEST_DRIVE, block, sector_buffer) == DISK_OK);
+
+    for (unsigned attempt = 0; attempt < 2; ++attempt) {
+        REQUIRE(fs_format(FS_TEST_DRIVE) == 0);
+        REQUIRE(fs_layout_matches());
+        REQUIRE(disk_read(FS_TEST_DRIVE, expected_sb.data_start + 1, sector_buffer) == DISK_OK);
+        for (unsigned byte = 0; byte < BLOCK_SIZE; ++byte)
+            REQUIRE(sector_buffer[byte] == 0xa5);
+    }
+    return 1;
+}
+
+/* Formatting a nonexistent drive must fail without changing the current disk. */
+static int kernel_fs_format_invalid(void) {
+    uint8_t saved[BLOCK_SIZE];
+    REQUIRE(disk_read(FS_TEST_DRIVE, 0, saved) == DISK_OK);
+    REQUIRE(fs_format(4) == -1);
+    REQUIRE(disk_read(FS_TEST_DRIVE, 0, sector_buffer) == DISK_OK);
+    REQUIRE(memcmp(sector_buffer, saved, BLOCK_SIZE) == 0);
+    return 1;
+}
+
+/* Like test_block_cache, verify through direct disk reads and always restore.
+ * fs_init has no reset API: run this suite once, then reboot before mounting.
+ */
+void test_fs(void) {
+    static const struct { const char *name; int (*run)(void); } cases[] = {
+        {"fs_init failure, retry and automatic format", kernel_fs_init},
+        {"fs_init repeated calls preserve contents", kernel_fs_init_repeat},
+        {"fs_format layout, root, bitmaps and repeat", kernel_fs_format},
+        {"fs_format rejects missing drive", kernel_fs_format_invalid},
+    };
+    disk_info_t info;
+    if (disk_get_info(FS_TEST_DRIVE, &info) != DISK_OK || !info.writable ||
+        info.sector_size != BLOCK_SIZE) {
+        printk("Filesystem tests SKIPPED: writable ATA drive 1 is required.\n");
+        return;
+    }
+
+    /* Build the expected geometry independently of the superblock on disk. */
+    memset(&expected_sb, 0, sizeof(expected_sb));
+    expected_sb.magic_number = MAGIC_NUMBER;
+    expected_sb.total_blocks = info.sector_count;
+    expected_sb.inode_count = info.sector_count / BLOCKS_PER_INODE;
+    expected_sb.block_bitmap_start = 1;
+    expected_sb.block_bitmap_blocks = DIV_ROUND_UP(info.sector_count, BLOCK_SIZE * 8);
+    expected_sb.inode_bitmap_start = 1 + expected_sb.block_bitmap_blocks;
+    expected_sb.inode_bitmap_blocks = DIV_ROUND_UP(expected_sb.inode_count, BLOCK_SIZE * 8);
+    expected_sb.inode_start = expected_sb.inode_bitmap_start + expected_sb.inode_bitmap_blocks;
+    expected_sb.inode_blocks = DIV_ROUND_UP(expected_sb.inode_count, INODES_PER_BLOCK);
+    expected_sb.data_start = expected_sb.inode_start + expected_sb.inode_blocks;
+    if (expected_sb.inode_count == 0 || expected_sb.data_start + 1 >= info.sector_count ||
+        expected_sb.data_start + 2 > FS_BACKUP_MAX_BLOCKS) {
+        printk("Filesystem tests SKIPPED: disk layout exceeds the test backup limits.\n");
+        return;
+    }
+    expected_sb.data_blocks = info.sector_count - expected_sb.data_start;
+    expected_sb.free_blocks = expected_sb.data_blocks - 1;
+    expected_sb.free_inodes = expected_sb.inode_count - 1;
+    expected_sb.root_inode = 0;
+    fs_backup_blocks = expected_sb.data_start + 2;
+
+    uint8_t *backup = mem_kalloc(fs_backup_blocks * BLOCK_SIZE);
+    if (!backup) {
+        printk("Filesystem tests SKIPPED: could not allocate backup.\n");
+        return;
+    }
+    drain_cache(0);
+    for (uint32_t block = 0; block < fs_backup_blocks; ++block) {
+        if (disk_read(FS_TEST_DRIVE, block, backup + block * BLOCK_SIZE) != DISK_OK) {
+            printk("Filesystem tests ABORTED: backup read failed.\n");
+            mem_kfree(backup);
+            return;
+        }
+    }
+
+    unsigned failed = 0;
+    /* Later cases need the cache on drive 1 even if the first init fails. */
+    for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        int passed = cases[i].run();
+        printk("%s: %s\n", passed ? "PASS" : "FAIL", cases[i].name);
+        failed += !passed;
+        if (i == 0 && !passed) {
+            printk("Filesystem tests: remaining cases SKIPPED after init failure.\n");
+            break;
+        }
+    }
+
+    /* Clear cached test data before restoring the original disk contents. */
+    cache_init(FS_TEST_DRIVE);
+    drain_cache(0);
+    unsigned restore_failed = 0;
+    for (uint32_t block = 0; block < fs_backup_blocks; ++block) {
+        uint8_t *saved = backup + block * BLOCK_SIZE;
+        if (disk_write(FS_TEST_DRIVE, block, saved) != DISK_OK ||
+            disk_read(FS_TEST_DRIVE, block, sector_buffer) != DISK_OK ||
+            memcmp(saved, sector_buffer, BLOCK_SIZE) != 0)
+            ++restore_failed;
+    }
+    if (disk_flush(FS_TEST_DRIVE) != DISK_OK) ++restore_failed;
+    mem_kfree(backup);
+    printk("Filesystem tests: %d failed; restore errors: %d\n", failed, restore_failed);
+}

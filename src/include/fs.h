@@ -2,6 +2,9 @@
 #define __FS_H
 
 #include <stdint.h>
+#include "block_cache.h"
+#include "disk.h"
+#include "strings.h"
 
 /* =========================================================
  * Filesystem constants
@@ -13,9 +16,22 @@
 
 #define MAX_FILENAME_LEN 13
 
-#define N_DIRECT_POINTERS 8
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+
+#define N_DIRECT_POINTERS 10
 #define N_INDIRECT_POINTERS 1
 #define N_DOUBLE_INDIRECT_POINTERS 1
+
+#define POINTERS_PER_BLOCK \
+    (BLOCK_SIZE / sizeof(uint32_t))
+
+#define MAX_FILE_SIZE \
+    (BLOCK_SIZE * N_DIRECT_POINTERS + \
+    POINTERS_PER_BLOCK * N_INDIRECT_POINTERS + \
+    POINTERS_PER_BLOCK * POINTERS_PER_BLOCK * N_DOUBLE_INDIRECT_POINTERS)
+
+#define BLOCKS_PER_INODE 32 // Number of blocks allocated per inode, about one block per 16 KB of data 32*512 = 16 KB
+#define BLOCKS_PER_BITMAP_BLOCK (512*8)
 
 #define MAX_FD_ENTRIES 16
 
@@ -50,8 +66,8 @@ typedef struct dir_entry {
 
 typedef struct location {
     uint32_t direct_pointers[N_DIRECT_POINTERS];
-    uint32_t indirect_pointer;
-    uint32_t double_indirect_pointer;
+    uint32_t indirect_pointer[N_INDIRECT_POINTERS];
+    uint32_t double_indirect_pointer[N_DOUBLE_INDIRECT_POINTERS];
 } location_t;
 
 
@@ -76,8 +92,7 @@ typedef struct inode {
 #define INODES_PER_BLOCK \
     (BLOCK_SIZE / sizeof(inode_t))
 
-#define POINTERS_PER_BLOCK \
-    (BLOCK_SIZE / sizeof(uint32_t))
+
 
 
 /* =========================================================
@@ -98,8 +113,10 @@ typedef struct superblock {
     uint32_t free_inodes;
 
     /* Block bitmap */
-    uint32_t bitmap_start;
-    uint32_t bitmap_blocks;
+    uint32_t block_bitmap_start;
+    uint32_t inode_bitmap_start;
+    uint32_t block_bitmap_blocks;
+    uint32_t inode_bitmap_blocks;
 
     /* Data region */
     uint32_t data_start;
@@ -111,7 +128,7 @@ typedef struct superblock {
 
     /* Pad superblock to one filesystem block */
     uint8_t padding[
-        BLOCK_SIZE - (12 * sizeof(uint32_t))
+        BLOCK_SIZE - (14 * sizeof(uint32_t))
     ];
 
 } superblock_t;

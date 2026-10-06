@@ -1,4 +1,5 @@
 #include "include/int.h"
+#include "include/strings.h"
 
 extern void* int_table[]; // defined in int_handler.S i hope
 static int cnt = 0;
