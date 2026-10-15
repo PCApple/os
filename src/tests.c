@@ -250,12 +250,198 @@ void test_block_cache(void) {
 
 /* Filesystem tests run once per boot, before any other fs_init call.
  * Formatting changes sectors 0 through data_start. Back up that range plus
- * one ordinary data sector, and restore it even when a REQUIRE fails.
+ * enough data sectors for directory growth, and restore even on failure.
  */
 #define FS_TEST_DRIVE 1
 #define FS_BACKUP_MAX_BLOCKS 4096 /* Limit the backup to 2 MiB. */
 static superblock_t expected_sb;
 static uint32_t fs_backup_blocks;
+/* Root, ten direct blocks, one indirect pointer block, one indirect data block,
+ * and a spare sector beyond all data touched by the creation tests. */
+#define FS_CREATE_BACKUP_DATA_BLOCKS (N_DIRECT_POINTERS + 4)
+
+static int fs_layout_matches(void);
+
+/* Read persisted metadata independently of the filesystem lookup helpers. */
+static int fs_test_read_inode(uint32_t index, inode_t *result) {
+    REQUIRE(disk_read(FS_TEST_DRIVE, expected_sb.inode_start + index / INODES_PER_BLOCK,
+                      sector_buffer) == DISK_OK);
+    *result = ((inode_t *)sector_buffer)[index % INODES_PER_BLOCK];
+    return 1;
+}
+
+static int fs_test_bitmap(uint32_t start, uint32_t index, int used) {
+    REQUIRE(disk_read(FS_TEST_DRIVE, start + index / (BLOCK_SIZE * 8),
+                      sector_buffer) == DISK_OK);
+    uint32_t bit = index % (BLOCK_SIZE * 8);
+    REQUIRE(((sector_buffer[bit / 8] >> (bit % 8)) & 1) == used);
+    return 1;
+}
+
+/* Verify an appended entry, its allocation bit, and the complete empty inode.
+ * These tests grow into single indirection; double indirection needs a much
+ * larger inode fixture than the bounded disk backup used by this suite. */
+static int fs_test_created_entry(uint32_t slot, const char *name, uint32_t index) {
+    inode_t root;
+    REQUIRE(fs_test_read_inode(0, &root));
+    uint32_t logical = slot / ENTRIES_PER_DIR_BLOCK;
+    uint32_t data;
+    if (logical < N_DIRECT_POINTERS) {
+        data = root.location.direct_pointers[logical];
+    } else {
+        REQUIRE(root.location.indirect_pointer[0]);
+        REQUIRE(fs_test_bitmap(expected_sb.block_bitmap_start,
+                               root.location.indirect_pointer[0], 1));
+        REQUIRE(disk_read(FS_TEST_DRIVE, root.location.indirect_pointer[0],
+                          sector_buffer) == DISK_OK);
+        data = ((uint32_t *)sector_buffer)[logical - N_DIRECT_POINTERS];
+    }
+    REQUIRE(data >= expected_sb.data_start && data < fs_backup_blocks - 1);
+    REQUIRE(fs_test_bitmap(expected_sb.block_bitmap_start, data, 1));
+    REQUIRE(disk_read(FS_TEST_DRIVE, data, sector_buffer) == DISK_OK);
+    dir_entry_t *entry = &((dir_entry_t *)sector_buffer)[slot % ENTRIES_PER_DIR_BLOCK];
+    REQUIRE(strcmp(entry->filename, name) == 0);
+    REQUIRE(entry->inode_index == index);
+    REQUIRE(fs_test_bitmap(expected_sb.inode_bitmap_start, index, 1));
+    inode_t actual, expected = {0};
+    expected.type = FILE_TYPE_FILE;
+    REQUIRE(fs_test_read_inode(index, &actual));
+    REQUIRE(memcmp(&actual, &expected, sizeof(actual)) == 0);
+    return 1;
+}
+
+static int fs_test_counts(uint32_t files, uint32_t blocks) {
+    REQUIRE(disk_read(FS_TEST_DRIVE, 0, sector_buffer) == DISK_OK);
+    superblock_t *sb = (superblock_t *)sector_buffer;
+    REQUIRE(sb->free_inodes == expected_sb.free_inodes - files);
+    REQUIRE(sb->free_blocks == expected_sb.free_blocks - blocks);
+    inode_t root;
+    REQUIRE(fs_test_read_inode(0, &root));
+    REQUIRE(root.type == FILE_TYPE_DIRECTORY);
+    REQUIRE(root.size == (files + 2) * sizeof(dir_entry_t));
+    return 1;
+}
+
+/* Include the maximum-length name and verify writes after cache invalidation. */
+static int kernel_fs_create(void) {
+    REQUIRE(fs_format(FS_TEST_DRIVE) == 0);
+    REQUIRE(fs_create("/hello") == 0);
+    char path[MAX_FILENAME_LEN + 2];
+    path[0] = '/';
+    for (unsigned i = 1; i <= MAX_FILENAME_LEN; ++i) path[i] = 'x';
+    path[MAX_FILENAME_LEN + 1] = '\0';
+    REQUIRE(fs_create(path) == 0);
+    REQUIRE(drain_cache(0));
+    REQUIRE(fs_test_created_entry(2, "hello", 1));
+    REQUIRE(fs_test_created_entry(3, path + 1, 2));
+    REQUIRE(fs_test_counts(2, 0));
+    return 1;
+}
+
+/* Invalid inputs must not consume an inode or alter formatted metadata. */
+static int kernel_fs_create_invalid(void) {
+    static const char *paths[] = {
+        NULL, "", "relative", "/", "/trailing/", "/missing/child",
+        "//child", "/.", "/.."
+    };
+    REQUIRE(fs_format(FS_TEST_DRIVE) == 0);
+    for (unsigned i = 0; i < sizeof(paths) / sizeof(paths[0]); ++i)
+        REQUIRE(fs_create(paths[i]) == -1);
+    char long_name[MAX_FILENAME_LEN + 3];
+    long_name[0] = '/';
+    for (unsigned i = 1; i <= MAX_FILENAME_LEN + 1; ++i) long_name[i] = 'x';
+    long_name[MAX_FILENAME_LEN + 2] = '\0';
+    REQUIRE(fs_create(long_name) == -1);
+    REQUIRE(fs_flush() == 0);
+    REQUIRE(fs_layout_matches());
+    return 1;
+}
+
+static int kernel_fs_create_duplicate(void) {
+    REQUIRE(fs_format(FS_TEST_DRIVE) == 0);
+    REQUIRE(fs_create("/file") == 0);
+    REQUIRE(fs_create("/file") == -1);
+    REQUIRE(fs_create("/file/child") == -1);
+    REQUIRE(fs_flush() == 0);
+    REQUIRE(fs_test_created_entry(2, "file", 1));
+    REQUIRE(fs_test_counts(1, 0));
+    return 1;
+}
+
+/* Create enough real files to cross a directory block boundary, then verify
+ * every persisted entry. Reaching single indirection also exercises inode
+ * allocations past half of the available inode table. */
+static int fs_test_create_growth(uint32_t files, uint32_t extra_blocks) {
+    if (expected_sb.free_inodes < files || expected_sb.free_blocks < extra_blocks) {
+        printk("fs_create growth SKIPPED: disk has too few inodes or data blocks.\n");
+        return 1;
+    }
+    REQUIRE(fs_format(FS_TEST_DRIVE) == 0);
+    char path[MAX_FILENAME_LEN + 2];
+    path[0] = '/';
+    path[1] = 'f';
+    for (uint32_t i = 0; i < files; ++i) {
+        itoa(path + 2, 'd', i);
+        REQUIRE(fs_create(path) == 0);
+    }
+    REQUIRE(drain_cache(0));
+    for (uint32_t i = 0; i < files; ++i) {
+        itoa(path + 2, 'd', i);
+        REQUIRE(fs_test_created_entry(i + 2, path + 1, i + 1));
+    }
+    REQUIRE(fs_test_counts(files, extra_blocks));
+    return 1;
+}
+
+static int kernel_fs_create_direct_growth(void) {
+    return fs_test_create_growth(ENTRIES_PER_DIR_BLOCK - 1, 1);
+}
+
+static int kernel_fs_create_indirect_growth(void) {
+    return fs_test_create_growth(N_DIRECT_POINTERS * ENTRIES_PER_DIR_BLOCK - 1,
+                                 N_DIRECT_POINTERS + 1);
+}
+
+/* Force allocation exhaustion without changing sectors outside the backup.
+ * A full root block requires a new data block; failure must return the newly
+ * allocated inode to the bitmap and preserve existing directory contents. */
+static int kernel_fs_create_exhaustion(void) {
+    uint32_t files = ENTRIES_PER_DIR_BLOCK - 2;
+    if (expected_sb.free_inodes <= files) {
+        printk("fs_create exhaustion SKIPPED: disk has too few inodes.\n");
+        return 1;
+    }
+    REQUIRE(fs_test_create_growth(files, 0));
+    cache_block_t *block = cache_get(0);
+    REQUIRE(block);
+    ((superblock_t *)block->data)->free_inodes = 0;
+    cache_mark_dirty(block);
+    cache_release(block);
+    REQUIRE(fs_create("/no_inode") == -1);
+    block = cache_get(0);
+    REQUIRE(block);
+    ((superblock_t *)block->data)->free_inodes = expected_sb.free_inodes - files;
+    ((superblock_t *)block->data)->free_blocks = 0;
+    cache_mark_dirty(block);
+    cache_release(block);
+    REQUIRE(fs_create("/no_block") == -1);
+    REQUIRE(fs_flush() == 0);
+    REQUIRE(fs_test_bitmap(expected_sb.inode_bitmap_start, files + 1, 0));
+    block = cache_get(0);
+    REQUIRE(block);
+    REQUIRE(((superblock_t *)block->data)->free_inodes == expected_sb.free_inodes - files);
+    REQUIRE(((superblock_t *)block->data)->free_blocks == 0);
+    ((superblock_t *)block->data)->free_blocks = expected_sb.free_blocks;
+    cache_mark_dirty(block);
+    cache_release(block);
+    REQUIRE(fs_flush() == 0);
+    REQUIRE(fs_test_counts(files, 0));
+    REQUIRE(fs_create("/retry") == 0);
+    REQUIRE(fs_flush() == 0);
+    REQUIRE(fs_test_created_entry(files + 2, "retry", files + 1));
+    REQUIRE(fs_test_counts(files + 1, 1));
+    return 1;
+}
 
 /* Check the on-disk layout, including every bitmap bit and unused inode byte. */
 static int fs_layout_matches(void) {
@@ -362,6 +548,12 @@ void test_fs(void) {
         {"fs_init repeated calls preserve contents", kernel_fs_init_repeat},
         {"fs_format layout, root, bitmaps and repeat", kernel_fs_format},
         {"fs_format rejects missing drive", kernel_fs_format_invalid},
+        {"fs_create persists empty files and maximum-length names", kernel_fs_create},
+        {"fs_create rejects invalid paths without changing metadata", kernel_fs_create_invalid},
+        {"fs_create rejects duplicates and parents that are files", kernel_fs_create_duplicate},
+        {"fs_create grows into another direct block", kernel_fs_create_direct_growth},
+        {"fs_create grows into single indirection", kernel_fs_create_indirect_growth},
+        {"fs_create handles inode/block exhaustion and retry", kernel_fs_create_exhaustion},
     };
     disk_info_t info;
     if (disk_get_info(FS_TEST_DRIVE, &info) != DISK_OK || !info.writable ||
@@ -382,8 +574,8 @@ void test_fs(void) {
     expected_sb.inode_start = expected_sb.inode_bitmap_start + expected_sb.inode_bitmap_blocks;
     expected_sb.inode_blocks = DIV_ROUND_UP(expected_sb.inode_count, INODES_PER_BLOCK);
     expected_sb.data_start = expected_sb.inode_start + expected_sb.inode_blocks;
-    if (expected_sb.inode_count == 0 || expected_sb.data_start + 1 >= info.sector_count ||
-        expected_sb.data_start + 2 > FS_BACKUP_MAX_BLOCKS) {
+    if (expected_sb.inode_count == 0 || expected_sb.data_start + FS_CREATE_BACKUP_DATA_BLOCKS > info.sector_count ||
+        expected_sb.data_start + FS_CREATE_BACKUP_DATA_BLOCKS > FS_BACKUP_MAX_BLOCKS) {
         printk("Filesystem tests SKIPPED: disk layout exceeds the test backup limits.\n");
         return;
     }
@@ -391,7 +583,7 @@ void test_fs(void) {
     expected_sb.free_blocks = expected_sb.data_blocks - 1;
     expected_sb.free_inodes = expected_sb.inode_count - 1;
     expected_sb.root_inode = 0;
-    fs_backup_blocks = expected_sb.data_start + 2;
+    fs_backup_blocks = expected_sb.data_start + FS_CREATE_BACKUP_DATA_BLOCKS;
 
     uint8_t *backup = mem_kalloc(fs_backup_blocks * BLOCK_SIZE);
     if (!backup) {

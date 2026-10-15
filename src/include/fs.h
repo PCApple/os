@@ -22,6 +22,9 @@
 #define N_INDIRECT_POINTERS 1
 #define N_DOUBLE_INDIRECT_POINTERS 1
 
+#define DIRECT_BLOCKS_PER_INDIRECT_BLOCK \
+    (BLOCK_SIZE / sizeof(uint32_t))
+
 #define POINTERS_PER_BLOCK \
     (BLOCK_SIZE / sizeof(uint32_t))
 
@@ -71,6 +74,8 @@ typedef struct location {
 } location_t;
 
 
+
+
 /* =========================================================
  * Inode
  * ========================================================= */
@@ -86,6 +91,11 @@ typedef struct inode {
     uint32_t reserved[4];
 
 } inode_t;
+
+typedef struct {
+    cache_block_t *block;
+    inode_t *inode;
+} inode_handle_t;
 
 #define INODE_SIZE sizeof(inode_t)
 
